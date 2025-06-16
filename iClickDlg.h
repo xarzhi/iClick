@@ -68,5 +68,6 @@ public:
 	afx_msg void OnBnClickedCheck1();
 	CButton random_check;
 	afx_msg void OnEnChangeEdit1();
+	CStatic pic_box;
 };
 

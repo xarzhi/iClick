@@ -183,6 +183,7 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CMyStatic.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="iClick.h" />
     <ClInclude Include="iClickDlg.h" />
@@ -191,6 +192,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CMyStatic.cpp" />
     <ClCompile Include="iClick.cpp" />
     <ClCompile Include="iClickDlg.cpp" />
     <ClCompile Include="pch.cpp">
@@ -207,6 +209,8 @@
     <None Include="res\iClick.rc2" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\aim.bmp" />
+    <Image Include="res\bitmap1.bmp" />
     <Image Include="res\iClick.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

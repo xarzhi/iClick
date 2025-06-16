@@ -87,6 +87,7 @@ void CiClickDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT1, blurry_ipt);
 	DDX_Control(pDX, IDC_HOTKEY1, start_hotkey);
 	DDX_Control(pDX, IDC_CHECK1, random_check);
+	DDX_Control(pDX, IDC_STATIC_PIC, pic_box);
 }
 
 BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
@@ -181,6 +182,14 @@ BOOL CiClickDlg::OnInitDialog()
 
 	blurry_ipt.EnableWindow(FALSE);
 	select_row = -1;
+
+
+
+	//CImage cim;
+	//cim.Load(_T(""));
+	//HBITMAP hbmp = cim.Detach();
+	//pic_box.SetBitmap(hbmp);
+
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -285,9 +294,6 @@ UINT MyThreadFunction(LPVOID pParam)
 				x = point.x;
 				y = point.y;
 			}
-			CString str;
-			str.Format(_T("%d,%d"), x, y);
-			AfxMessageBox(str);
 			::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
 			::SendMessage(point.hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
 			Sleep(Wnd->gap);
@@ -484,7 +490,6 @@ void CiClickDlg::OnBnClickedCheck1()
 		else {
 			blurry_ipt.EnableWindow(FALSE);
 			isRandomClick = FALSE;
-
 		}
 }
 
