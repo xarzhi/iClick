@@ -47,10 +47,10 @@ public:
 	CEdit wnd_title_ipt;
 	CButton start_Watch_Check;
 	afx_msg void OnNMThemeChangedHotkey3(NMHDR* pNMHDR, LRESULT* pResult);
-	//static UINT MyThreadFunction(LPVOID pParam);
 	BOOL isClick=FALSE;
 	UINT gap = 20;
 	UINT loop = 0;
+	UINT Random_Radius = 0;
 	CButton start_btn;
 	CEdit gap_ipt;
 	UINT watch_hotkey = VK_F1;
@@ -63,6 +63,11 @@ public:
 	CMenu m_Menu;
 	afx_msg void OnMenuRClick();
 	int select_row;
+	BOOL isRandomClick = FALSE;
 	afx_msg void OnDeleteAll();
+	afx_msg void OnBnClickedCheck1();
+	CButton random_check;
+	afx_msg void OnEnChangeEdit1();
+	CStatic pic_box;
 };
 

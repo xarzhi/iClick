@@ -15,7 +15,6 @@
 // CiClickApp
 
 BEGIN_MESSAGE_MAP(CiClickApp, CWinApp)
-	ON_COMMAND(ID_HELP, &CWinApp::OnHelp)
 END_MESSAGE_MAP()
 
 
