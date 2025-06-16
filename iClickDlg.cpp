@@ -86,6 +86,7 @@ void CiClickDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT5, loop_ipt);
 	DDX_Control(pDX, IDC_EDIT1, blurry_ipt);
 	DDX_Control(pDX, IDC_HOTKEY1, start_hotkey);
+	DDX_Control(pDX, IDC_CHECK1, random_check);
 }
 
 BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
@@ -107,6 +108,8 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST1, &CiClickDlg::OnNMRClickList1)
 	ON_COMMAND(ID_32773, &CiClickDlg::OnMenuRClick)
 	ON_COMMAND(ID_32774, &CiClickDlg::OnDeleteAll)
+	ON_BN_CLICKED(IDC_CHECK1, &CiClickDlg::OnBnClickedCheck1)
+	ON_EN_CHANGE(IDC_EDIT1, &CiClickDlg::OnEnChangeEdit1)
 END_MESSAGE_MAP()
 
 
@@ -163,7 +166,10 @@ BOOL CiClickDlg::OnInitDialog()
 	// 点击间隔edit初始化值
 	gap_ipt.SetWindowTextW(_T("20"));
 	loop_ipt.SetWindowTextW(_T("0"));
-	blurry_ipt.SetWindowTextW(_T("0"));
+
+	CString Random_Radius_Str;
+	Random_Radius_Str.Format(_T("%d"), Random_Radius);
+	blurry_ipt.SetWindowTextW(Random_Radius_Str);
 
 	setOnTop_Check.SetCheck(TRUE);
 	this->SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
@@ -171,8 +177,10 @@ BOOL CiClickDlg::OnInitDialog()
 	start_hotkey.SetHotKey(VK_F3,NULL);
 	RegisterHotKey(m_hWnd, 0x124, NULL, VK_F3);
 
+	random_check.SetCheck(isRandomClick);
 
-
+	blurry_ipt.EnableWindow(FALSE);
+	select_row = -1;
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -255,13 +263,33 @@ void CiClickDlg::OnStnClickedStaticPic()
 	//MessageBox(_T("asdasd"));
 }
 
+int GetRand(int MIN, int MAX)//产生随机数
+{
+	    int max;
+	    max = RAND_MAX;//rand()函数随机数的最大值
+	    return (int)(rand() * (MAX - MIN) / max + MIN);
+}
+
 UINT MyThreadFunction(LPVOID pParam)
 {
 	CiClickDlg* Wnd = (CiClickDlg*)pParam;
 	while (Wnd->isClick) {
 		for (const auto& point : pointInfo) {
-			::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(point.x, point.y));
-			::SendMessage(point.hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(point.x, point.y));
+			UINT num=Wnd->Random_Radius;
+			int x, y;
+			if (Wnd->isRandomClick) {
+				 x = GetRand(point.x - num, point.x + num);
+				 y = GetRand(point.y - num, point.y + num);
+			}
+			else {
+				x = point.x;
+				y = point.y;
+			}
+			CString str;
+			str.Format(_T("%d,%d"), x, y);
+			AfxMessageBox(str);
+			::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+			::SendMessage(point.hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
 			Sleep(Wnd->gap);
 		}
 		Sleep(Wnd->loop);
@@ -445,4 +473,25 @@ void CiClickDlg::OnDeleteAll()
 	// TODO: 在此添加命令处理程序代码
 	pointInfo.clear(); // 删除所有元素
 	list.DeleteAllItems(); // 删除所有行
+}
+
+void CiClickDlg::OnBnClickedCheck1()
+{
+		if (random_check.GetCheck() == TRUE) {
+			blurry_ipt.EnableWindow(TRUE);
+			isRandomClick = TRUE;
+		}
+		else {
+			blurry_ipt.EnableWindow(FALSE);
+			isRandomClick = FALSE;
+
+		}
+}
+
+void CiClickDlg::OnEnChangeEdit1()
+{
+	CString str;
+	blurry_ipt.GetWindowTextW(str);
+	UINT num = (UINT)_ttoi(str);
+	Random_Radius = num;
 }
