@@ -190,14 +190,15 @@ BOOL CiClickDlg::OnInitDialog()
 	hide_check.SetCheck(need_hide);
 	
 
-	// 给图片空间设置位图
+	//// 给图片空间设置位图
 	CBitmap m_bmp;
 	m_bmp.LoadBitmap(IDB_BITMAP1);
 	CStatic* pPic = (CStatic*)GetDlgItem(IDC_STATIC_PIC);
 	pPic->SetWindowPos(NULL, 0, 0, 32,32, SWP_NOMOVE | SWP_NOZORDER);
-
 	pPic->SetBitmap(m_bmp);
 	m_bmp.Detach(); // 关键！防止bmp析构时删除位图
+
+
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -280,6 +281,7 @@ void CiClickDlg::OnBnClickedCheck2()
 	else {
 		 UnregisterHotKey(m_hWnd, 0x123);
 	}
+	start_watch = start_Watch_Check.GetCheck();
 }
 
 void CiClickDlg::OnStnClickedStaticPic()
@@ -323,6 +325,7 @@ void CiClickDlg::OnBnClickedButton1()
 {
 	if (pointInfo.empty()) {
 		MessageBox(_T("请添加坐标信息"));
+		return;
 	}
 
 	if (isClick == TRUE) { 
@@ -388,6 +391,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 {
 	if (nHotKeyId == 0x123) {
 		// TODO: 在此添加消息处理程序代码和/或调用默认值
+		if (start_watch == FALSE) return;
 		CPoint ptCursor;
 		GetCursorPos(&ptCursor);//获取鼠标位置
 
@@ -417,6 +421,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 	else if (nHotKeyId == 0x124) {
 		if (pointInfo.empty()) {
 			MessageBox(_T("请添加坐标信息"));
+			return;
 		}
 
 		if (isClick == TRUE) {

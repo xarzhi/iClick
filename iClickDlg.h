@@ -71,6 +71,7 @@ public:
 	afx_msg void OnBnClickedCheck1();
 	CButton random_check;
 	BOOL isDown = FALSE;
+	BOOL start_watch = FALSE;
 	afx_msg void OnEnChangeEdit1();
 	CStatic pic_box;
 	BOOL need_hide = FALSE;
