@@ -187,7 +187,6 @@ BOOL CiClickDlg::OnInitDialog()
 	blurry_ipt.EnableWindow(FALSE);
 	select_row = -1;
 
-	hide_check.SetCheck(need_hide);
 	
 
 	//// 给图片空间设置位图
@@ -545,12 +544,15 @@ void CiClickDlg::OnLButtonDown(UINT nFlags, CPoint point)
 	if (point.x > rect.left && point.x<rect.right && point.y>rect.top && point.y < rect.bottom) {
 		if (isDown==FALSE) {
 			isDown = TRUE;
-			SetCapture();
+			if (GetCapture() != NULL) {
+				// 可尝试释放其他窗口的捕获
+				ReleaseCapture();
+			}
 			SetCursor(LoadCursor(NULL, IDC_CROSS));
-
 			if (need_hide==TRUE) {
 				ShowWindow(SW_MINIMIZE);              // 隐藏当前窗口
 			}
+			SetCapture();
 
 		}
 	}
@@ -560,14 +562,14 @@ void CiClickDlg::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 {
-	MessageBox(_T("asd"));
-
 	if (isDown==TRUE) {
 		if (need_hide==TRUE) {
-			//ShowWindow(SW_RESTORE);
-			SendMessage(WM_SYSCOMMAND, SC_RESTORE, 0);
+			ShowWindow(SW_RESTORE);
 		}
-		ReleaseCapture();
+		if (GetCapture() == this) {
+			ReleaseCapture();
+		}
+		
 
 		SetCursor(LoadCursor(NULL, IDC_ARROW));
 		isDown = FALSE;
@@ -601,8 +603,10 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 
 void CiClickDlg::OnMouseMove(UINT nFlags, CPoint point)
 {
+
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
 	if (isDown == TRUE) {
+		//MessageBox(_T("132"));
 
 		CPoint ptCursor;
 		GetCursorPos(&ptCursor);//获取鼠标位置
