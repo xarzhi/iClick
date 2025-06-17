@@ -183,7 +183,6 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CMyStatic.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="iClick.h" />
     <ClInclude Include="iClickDlg.h" />
@@ -192,7 +191,6 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CMyStatic.cpp" />
     <ClCompile Include="iClick.cpp" />
     <ClCompile Include="iClickDlg.cpp" />
     <ClCompile Include="pch.cpp">

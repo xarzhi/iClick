@@ -105,6 +105,7 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_NOTIFY(NM_THEMECHANGED, IDC_HOTKEY3, &CiClickDlg::OnNMThemeChangedHotkey3)
 	ON_EN_CHANGE(IDC_EDIT5, &CiClickDlg::OnEnChangeEdit5)
 	ON_EN_CHANGE(IDC_HOTKEY3, &CiClickDlg::OnHotKeyChanged)
+	ON_EN_CHANGE(IDC_HOTKEY1, &CiClickDlg::OnStartHotKeyChanged)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST1, &CiClickDlg::OnNMRClickList1)
 	ON_COMMAND(ID_32773, &CiClickDlg::OnMenuRClick)
 	ON_COMMAND(ID_32774, &CiClickDlg::OnDeleteAll)
@@ -115,7 +116,6 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_WM_MOUSEMOVE()
 	ON_BN_CLICKED(IDC_CHECK4, &CiClickDlg::OnBnClickedCheck4)
 END_MESSAGE_MAP()
-
 
 
 // CiClickDlg 消息处理程序
@@ -164,8 +164,6 @@ BOOL CiClickDlg::OnInitDialog()
 	// 为列表视图控件添加全行选中和栅格风格   
 	list.SetExtendedStyle(list.GetExtendedStyle() | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 
-	//注册热键 F6
-	hotkey1.SetHotKey(watch_hotkey, NULL);
 
 	// 点击间隔edit初始化值
 	gap_ipt.SetWindowTextW(_T("20"));
@@ -178,6 +176,9 @@ BOOL CiClickDlg::OnInitDialog()
 	setOnTop_Check.SetCheck(TRUE);
 	this->SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 
+
+	//注册热键 F6
+	hotkey1.SetHotKey(watch_hotkey, NULL);
 	start_hotkey.SetHotKey(VK_F3,NULL);
 	RegisterHotKey(m_hWnd, 0x124, NULL, VK_F3);
 
@@ -199,6 +200,9 @@ BOOL CiClickDlg::OnInitDialog()
 	m_bmp.Detach(); // 关键！防止bmp析构时删除位图
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
+
+
+
 
 
 void CiClickDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -264,10 +268,14 @@ void CiClickDlg::OnEnChangeEdit2()
 	gap = (UINT)_ttoi(num);
 }
 
+// 注册获取开始坐标快捷键
 void CiClickDlg::OnBnClickedCheck2()
 {
 	if (start_Watch_Check.GetCheck() == TRUE) {
-		RegisterHotKey(m_hWnd, 0x123, NULL, watch_hotkey);
+		WORD wVirtualKeyCode;
+		WORD wModifiers;
+		hotkey1.GetHotKey(wVirtualKeyCode, wModifiers);
+		RegisterHotKey(m_hWnd, 0x123, wModifiers, wVirtualKeyCode);
 	}
 	else {
 		 UnregisterHotKey(m_hWnd, 0x123);
@@ -313,7 +321,9 @@ UINT MyThreadFunction(LPVOID pParam)
 
 void CiClickDlg::OnBnClickedButton1()
 {
-	if (pointInfo.empty()) return;
+	if (pointInfo.empty()) {
+		MessageBox(_T("请添加坐标信息"));
+	}
 
 	if (isClick == TRUE) { 
 		start_btn.SetWindowTextW(_T("开始点击"));
@@ -405,7 +415,9 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 	
 	}
 	else if (nHotKeyId == 0x124) {
-		if (pointInfo.empty()) return;
+		if (pointInfo.empty()) {
+			MessageBox(_T("请添加坐标信息"));
+		}
 
 		if (isClick == TRUE) {
 			start_btn.SetWindowTextW(_T("开始点击"));
@@ -436,16 +448,24 @@ void CiClickDlg::OnEnChangeEdit5()
 	loop = (UINT)_ttoi(num);
 }
 
+// 获取坐标快捷键控件值改变，先取消之前的快捷键，再注册新的
 void CiClickDlg::OnHotKeyChanged()
 {
 	WORD wVirtualKeyCode;
 	WORD wModifiers;
-	hotkey1.GetHotKey(wVirtualKeyCode, wModifiers); // 获取键码和修饰符
-
-
+	hotkey1.GetHotKey(wVirtualKeyCode, wModifiers);
 	UnregisterHotKey(m_hWnd, 0x123);
-	RegisterHotKey(m_hWnd, 0x123, NULL, wVirtualKeyCode);
+	RegisterHotKey(m_hWnd, 0x123, wModifiers, wVirtualKeyCode);
+}
 
+// 开始结束点击快捷键值改变
+void CiClickDlg::OnStartHotKeyChanged()
+{
+	WORD wVirtualKeyCode;
+	WORD wModifiers;
+	start_hotkey.GetHotKey(wVirtualKeyCode, wModifiers);
+	UnregisterHotKey(m_hWnd, 0x124); 
+	RegisterHotKey(m_hWnd, 0x124, wModifiers, wVirtualKeyCode);
 }
 
 
@@ -479,7 +499,7 @@ void CiClickDlg::OnMenuRClick()
 {
 	// TODO: 在此添加命令处理程序代码
 	if (select_row >= 0 && select_row < pointInfo.size()) {
-		pointInfo.erase(pointInfo.begin() + select_row); // 删除第3个元素（30）
+		pointInfo.erase(pointInfo.begin() + select_row); // 删除第select_row个元素
 	}
 	list.DeleteItem(select_row);
 }

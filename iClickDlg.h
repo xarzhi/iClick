@@ -3,6 +3,8 @@
 //
 
 #pragma once
+
+
 #define WM_MOUSEBUTTONDOWN WM_USER+777
 
 // CiClickDlg 对话框
@@ -58,6 +60,7 @@ public:
 	CEdit loop_ipt;
 	CEdit blurry_ipt;
 	afx_msg void OnHotKeyChanged(); // 声明处理函数
+	afx_msg void OnStartHotKeyChanged(); // 声明处理函数
 	CHotKeyCtrl start_hotkey;
 	afx_msg void OnNMRClickList1(NMHDR* pNMHDR, LRESULT* pResult); 
 	CMenu m_Menu;
@@ -76,5 +79,6 @@ public:
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnBnClickedCheck4();
 	CButton hide_check;
+
 };
 
