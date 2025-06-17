@@ -547,27 +547,30 @@ void CiClickDlg::OnLButtonDown(UINT nFlags, CPoint point)
 			isDown = TRUE;
 			SetCapture();
 			SetCursor(LoadCursor(NULL, IDC_CROSS));
-			if (need_hide) {
-				ShowWindow(SW_HIDE);              // 隐藏当前窗口
+
+			if (need_hide==TRUE) {
+				ShowWindow(SW_MINIMIZE);              // 隐藏当前窗口
 			}
+
 		}
 	}
-
-
 
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
 
 void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 {
-	if (isDown==TRUE) {
-		ReleaseCapture();
-		SetCursor(LoadCursor(NULL, IDC_ARROW));
-		if (need_hide) {
-			ShowWindow(SW_SHOW);              // 显示当前窗口
-		}
-		isDown = FALSE;
+	MessageBox(_T("asd"));
 
+	if (isDown==TRUE) {
+		if (need_hide==TRUE) {
+			//ShowWindow(SW_RESTORE);
+			SendMessage(WM_SYSCOMMAND, SC_RESTORE, 0);
+		}
+		ReleaseCapture();
+
+		SetCursor(LoadCursor(NULL, IDC_ARROW));
+		isDown = FALSE;
 		CPoint ptCursor;
 		GetCursorPos(&ptCursor);//获取鼠标位置
 		CWnd* hWnd = WindowFromPoint(ptCursor); // 获取窗口句柄
