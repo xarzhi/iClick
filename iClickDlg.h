@@ -38,7 +38,7 @@ public:
 	CListCtrl list;
 	afx_msg void OnBnClickedButton1();
 	afx_msg void OnBnClickedCheck3();
-	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+//	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	CButton setOnTop_Check;
 	CEdit hwnd_ipt;
@@ -62,12 +62,19 @@ public:
 	afx_msg void OnNMRClickList1(NMHDR* pNMHDR, LRESULT* pResult); 
 	CMenu m_Menu;
 	afx_msg void OnMenuRClick();
-	int select_row;
+	INT select_row=-1;
 	BOOL isRandomClick = FALSE;
 	afx_msg void OnDeleteAll();
 	afx_msg void OnBnClickedCheck1();
 	CButton random_check;
+	BOOL isDown = FALSE;
 	afx_msg void OnEnChangeEdit1();
 	CStatic pic_box;
+	BOOL need_hide = FALSE;
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnBnClickedCheck4();
+	CButton hide_check;
 };
 

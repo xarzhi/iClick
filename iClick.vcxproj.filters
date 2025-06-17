@@ -65,10 +65,7 @@
     <Image Include="res\iClick.ico">
       <Filter>资源文件</Filter>
     </Image>
-    <Image Include="res\bitmap1.bmp">
-      <Filter>资源文件</Filter>
-    </Image>
-    <Image Include="..\aim.bmp">
+    <Image Include="res\aim.bmp">
       <Filter>资源文件</Filter>
     </Image>
   </ItemGroup>

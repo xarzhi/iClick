@@ -11,8 +11,8 @@
 #define IDR_ACCELERATOR1                132
 #define IDI_ICON2                       135
 #define IDR_MENU1                       136
-#define IDB_BITMAP1                     138
-#define IDB_BITMAP2                     140
+#define IDB_PNG1                        145
+#define IDB_BITMAP1                     150
 #define IDC_HOTKEY3                     1007
 #define IDC_BUTTON1                     1008
 #define IDC_EDIT2                       1009
@@ -27,7 +27,6 @@
 #define IDC_STATIC_PIC                  1024
 #define IDC_EDIT1                       1027
 #define IDC_EDIT5                       1028
-#define IDC_BUTTON2                     1029
 #define ID_32772                        32772
 #define ID_32773                        32773
 #define ID_32774                        32774
@@ -36,7 +35,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        141
+#define _APS_NEXT_RESOURCE_VALUE        151
 #define _APS_NEXT_COMMAND_VALUE         32775
 #define _APS_NEXT_CONTROL_VALUE         1030
 #define _APS_NEXT_SYMED_VALUE           101

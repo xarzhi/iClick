@@ -19,8 +19,6 @@ typedef struct PointInfo {
 
 
 vector<PointInfo> pointInfo;
-//PointInfo point1 = { 10, 20, nullptr };
-//pointInfo.push_back(point1);
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -88,6 +86,7 @@ void CiClickDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_HOTKEY1, start_hotkey);
 	DDX_Control(pDX, IDC_CHECK1, random_check);
 	DDX_Control(pDX, IDC_STATIC_PIC, pic_box);
+	DDX_Control(pDX, IDC_CHECK4, hide_check);
 }
 
 BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
@@ -99,7 +98,7 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_STN_CLICKED(IDC_STATIC_PIC, &CiClickDlg::OnStnClickedStaticPic)
 	ON_BN_CLICKED(IDC_BUTTON1, &CiClickDlg::OnBnClickedButton1)
 	ON_BN_CLICKED(IDC_CHECK3, &CiClickDlg::OnBnClickedCheck3)
-	ON_WM_MOUSEMOVE()
+//	ON_WM_MOUSEMOVE()
 	ON_WM_KEYDOWN()
 	ON_WM_HOTKEY() //添加消息宏
 	ON_WM_HOTKEY()
@@ -111,6 +110,10 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_COMMAND(ID_32774, &CiClickDlg::OnDeleteAll)
 	ON_BN_CLICKED(IDC_CHECK1, &CiClickDlg::OnBnClickedCheck1)
 	ON_EN_CHANGE(IDC_EDIT1, &CiClickDlg::OnEnChangeEdit1)
+	ON_WM_LBUTTONDOWN()
+	ON_WM_LBUTTONUP()
+	ON_WM_MOUSEMOVE()
+	ON_BN_CLICKED(IDC_CHECK4, &CiClickDlg::OnBnClickedCheck4)
 END_MESSAGE_MAP()
 
 
@@ -150,13 +153,13 @@ BOOL CiClickDlg::OnInitDialog()
 
 	CRect rect;
 	list.GetClientRect(&rect);
-	int width = rect.Width() / 5;
+	int width = rect.Width() / 4;
 	list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);	// 整行选择、网格线
 	list.InsertColumn(0, _T("X坐标"), LVCFMT_LEFT, width);	// 插入第2列的列名
 	list.InsertColumn(1, _T("Y坐标"), LVCFMT_LEFT, width);	// 插入第3列的列名
-	list.InsertColumn(2, _T("鼠标按键"), LVCFMT_LEFT, width);	// 插入第4列的列名
-	list.InsertColumn(3, _T("点击方式"), LVCFMT_LEFT, width);	// 插入第5列的列名
-	list.InsertColumn(4, _T("操作"), LVCFMT_LEFT, width-20);	// 插入第6列的列名
+	list.InsertColumn(2, _T("窗口句柄"), LVCFMT_LEFT, width);	// 插入第4列的列名
+	list.InsertColumn(3, _T("窗口标题"), LVCFMT_LEFT, width-20);	// 插入第5列的列名
+
 
 	// 为列表视图控件添加全行选中和栅格风格   
 	list.SetExtendedStyle(list.GetExtendedStyle() | LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
@@ -183,16 +186,20 @@ BOOL CiClickDlg::OnInitDialog()
 	blurry_ipt.EnableWindow(FALSE);
 	select_row = -1;
 
+	hide_check.SetCheck(need_hide);
+	
 
+	// 给图片空间设置位图
+	CBitmap m_bmp;
+	m_bmp.LoadBitmap(IDB_BITMAP1);
+	CStatic* pPic = (CStatic*)GetDlgItem(IDC_STATIC_PIC);
+	pPic->SetWindowPos(NULL, 0, 0, 32,32, SWP_NOMOVE | SWP_NOZORDER);
 
-	//CImage cim;
-	//cim.Load(_T(""));
-	//HBITMAP hbmp = cim.Detach();
-	//pic_box.SetBitmap(hbmp);
-
-
+	pPic->SetBitmap(m_bmp);
+	m_bmp.Detach(); // 关键！防止bmp析构时删除位图
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
+
 
 void CiClickDlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
@@ -332,15 +339,15 @@ void CiClickDlg::OnBnClickedCheck3()
 }
 
 
-void CiClickDlg::OnMouseMove(UINT nFlags, CPoint point) {
-	if (nFlags == MK_LBUTTON) {
+//void CiClickDlg::OnMouseMove(UINT nFlags, CPoint point) {
+//	if (nFlags == MK_LBUTTON) {
 		//MessageBox(_T("ASD"));
-	}
-	CString str;
-	str.Format(_T("X: %d, Y: %d"), point.x, point.y);
-
-	CDialogEx::OnMouseMove(nFlags, point);
-}
+//	}
+//	CString str;
+//	str.Format(_T("X: %d, Y: %d"), point.x, point.y);
+//
+//	CDialogEx::OnMouseMove(nFlags, point);
+//}
 
 
 void CiClickDlg::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) {
@@ -377,22 +384,25 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		CWnd* hWnd = WindowFromPoint(ptCursor); // 获取窗口句柄
 
 		::ScreenToClient(hWnd->m_hWnd, &ptCursor);
-		CString x, y;
-		x.Format(_T("%d"), ptCursor.x);
-		y.Format(_T("%d"), ptCursor.y);
-		int iRow = list.GetItemCount(); //获取行数
-		list.InsertItem(iRow, x);
-		list.SetItemText(iRow, 1, y);
-		pointInfo.push_back({ ptCursor.x,ptCursor.y,hWnd->m_hWnd });
 		// 窗口标题
 		CString str;
 		hWnd->GetWindowTextW(str);
 		wnd_title_ipt.SetWindowTextW(str);
 
 		// 窗口句柄
-		CString str2;
 		CString strHandle = GetWindowHandleDecimal(hWnd);
 		hwnd_ipt.SetWindowTextW(strHandle);
+
+		CString x, y;
+		x.Format(_T("%d"), ptCursor.x);
+		y.Format(_T("%d"), ptCursor.y);
+		int iRow = list.GetItemCount(); //获取行数
+		list.InsertItem(iRow, x);
+		list.SetItemText(iRow, 1, y);
+		list.SetItemText(iRow, 2, strHandle);
+		list.SetItemText(iRow, 3, str);
+		pointInfo.push_back({ ptCursor.x,ptCursor.y,hWnd->m_hWnd });
+	
 	}
 	else if (nHotKeyId == 0x124) {
 		if (pointInfo.empty()) return;
@@ -499,4 +509,94 @@ void CiClickDlg::OnEnChangeEdit1()
 	blurry_ipt.GetWindowTextW(str);
 	UINT num = (UINT)_ttoi(str);
 	Random_Radius = num;
+}
+
+void CiClickDlg::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	CRect rect;
+	GetDlgItem(IDC_STATIC_PIC)->GetWindowRect(&rect);
+	ScreenToClient(rect);
+
+	if (point.x > rect.left && point.x<rect.right && point.y>rect.top && point.y < rect.bottom) {
+		if (isDown==FALSE) {
+			isDown = TRUE;
+			SetCapture();
+			SetCursor(LoadCursor(NULL, IDC_CROSS));
+			if (need_hide) {
+				ShowWindow(SW_HIDE);              // 隐藏当前窗口
+			}
+		}
+	}
+
+
+
+	CDialogEx::OnLButtonDown(nFlags, point);
+}
+
+void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	if (isDown==TRUE) {
+		ReleaseCapture();
+		SetCursor(LoadCursor(NULL, IDC_ARROW));
+		if (need_hide) {
+			ShowWindow(SW_SHOW);              // 显示当前窗口
+		}
+		isDown = FALSE;
+
+		CPoint ptCursor;
+		GetCursorPos(&ptCursor);//获取鼠标位置
+		CWnd* hWnd = WindowFromPoint(ptCursor); // 获取窗口句柄
+
+		// 窗口标题
+		CString str;
+		hWnd->GetWindowTextW(str);
+		wnd_title_ipt.SetWindowTextW(str);
+
+		// 窗口句柄
+		CString strHandle = GetWindowHandleDecimal(hWnd);
+		hwnd_ipt.SetWindowTextW(strHandle);
+
+		::ScreenToClient(hWnd->m_hWnd, &ptCursor);
+		CString x, y;
+		x.Format(_T("%d"), ptCursor.x);
+		y.Format(_T("%d"), ptCursor.y);
+		int iRow = list.GetItemCount(); //获取行数
+		list.InsertItem(iRow, x);
+		list.SetItemText(iRow, 1, y);
+		list.SetItemText(iRow, 2, strHandle);
+		list.SetItemText(iRow, 3, str);
+		pointInfo.push_back({ ptCursor.x,ptCursor.y,hWnd->m_hWnd });
+
+	}
+	CDialogEx::OnLButtonUp(nFlags, point);
+}
+
+void CiClickDlg::OnMouseMove(UINT nFlags, CPoint point)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	if (isDown == TRUE) {
+
+		CPoint ptCursor;
+		GetCursorPos(&ptCursor);//获取鼠标位置
+		CWnd* hWnd = WindowFromPoint(ptCursor); // 获取窗口句柄
+
+
+		// 窗口标题
+		CString str;
+		hWnd->GetWindowTextW(str);
+		wnd_title_ipt.SetWindowTextW(str);
+
+		// 窗口句柄
+		CString str2;
+		CString strHandle = GetWindowHandleDecimal(hWnd);
+		hwnd_ipt.SetWindowTextW(strHandle);
+		
+	}
+	CDialogEx::OnMouseMove(nFlags, point);
+}
+
+void CiClickDlg::OnBnClickedCheck4()
+{
+	BOOL hide = hide_check.GetCheck();
+	need_hide = hide;
 }
