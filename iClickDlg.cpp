@@ -396,6 +396,8 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 
 		CWnd* hWnd = WindowFromPoint(ptCursor); // 获取窗口句柄
 
+
+
 		::ScreenToClient(hWnd->m_hWnd, &ptCursor);
 		// 窗口标题
 		CString str;
@@ -563,9 +565,7 @@ void CiClickDlg::OnLButtonDown(UINT nFlags, CPoint point)
 void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	if (isDown==TRUE) {
-		if (need_hide==TRUE) {
-			ShowWindow(SW_RESTORE);
-		}
+	
 		if (GetCapture() == this) {
 			ReleaseCapture();
 		}
@@ -596,6 +596,9 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		list.SetItemText(iRow, 2, strHandle);
 		list.SetItemText(iRow, 3, str);
 		pointInfo.push_back({ ptCursor.x,ptCursor.y,hWnd->m_hWnd });
+		if (need_hide == TRUE) {
+			ShowWindow(SW_RESTORE);
+		}
 
 	}
 	CDialogEx::OnLButtonUp(nFlags, point);
