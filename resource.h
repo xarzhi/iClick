@@ -27,6 +27,8 @@
 #define IDC_STATIC_PIC                  1024
 #define IDC_EDIT1                       1027
 #define IDC_EDIT5                       1028
+#define IDC_RADIO3                      1032
+#define IDC_RADIO4                      1033
 #define ID_32772                        32772
 #define ID_32773                        32773
 #define ID_32774                        32774
@@ -37,7 +39,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        151
 #define _APS_NEXT_COMMAND_VALUE         32775
-#define _APS_NEXT_CONTROL_VALUE         1030
+#define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
