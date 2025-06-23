@@ -6,13 +6,28 @@
 
 
 #define WM_MOUSEBUTTONDOWN WM_USER+777
+struct HotKeyInfo {
+	WORD wVirtualKey='/0';      // 主键虚拟码（如VK_A）
+	WORD wModifiers= '/0';       // 修饰键（如HOTKEYF_CONTROL）
+	CString strDisplay=L"";    // 显示文本（如"Ctrl+A"）
+};
 
+typedef struct PointInfo {
+	int x = 0;
+	int y = 0;
+	HWND hwnd = NULL;
+	int event_type = 1;			// 事件类型        1：鼠标事件   2：键盘事件
+	int moust_key = 1;			// 鼠标点击类型    1:单机    2：双击
+	HotKeyInfo hotKeyInfo;
+}PointInfo;
 // CiClickDlg 对话框
 class CiClickDlg : public CDialogEx
 {
 // 构造
 public:
 	CiClickDlg(CWnd* pParent = nullptr);	// 标准构造函数
+	
+
 // 对话框数据
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_ICLICK_DIALOG };
@@ -20,6 +35,12 @@ public:
 
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
+	virtual BOOL PreTranslateMessage(MSG* pMsg) {
+		if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_ESCAPE) {
+			return TRUE;
+		}
+		return CDialogEx::PreTranslateMessage(pMsg);
+	}
 
 
 // 实现
@@ -81,10 +102,13 @@ public:
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnBnClickedCheck4();
 	CButton hide_check;
-
 	afx_msg void OnBnClickedRadio3();
 	afx_msg void OnBnClickedRadio4();
 	afx_msg void ChangeToSingleClick();
 	afx_msg void ChangeToDoubleClick();
+	afx_msg void DeleteSingleRow();
+	afx_msg void DeleteAllRow();
+	afx_msg void OpenKeySelectDlg();
+	afx_msg void SetSpaceKey();
 };
 

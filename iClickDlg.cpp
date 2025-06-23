@@ -7,17 +7,10 @@
 #include "iClick.h"
 #include "iClickDlg.h"
 #include "afxdialogex.h"
+#include "Key_Select.h"
 #include <vector>
 using namespace std;
 
-typedef struct PointInfo {
-	int x=0;
-	int y=0;
-	HWND hwnd=NULL;
-	int event_type=1;
-	int moust_key=1;			// 1:单机    2：双击
-	CString keybord_key=L"";
-}PointInfo;
 
 
 vector<PointInfo> pointInfo;
@@ -121,6 +114,10 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_RADIO4, &CiClickDlg::OnBnClickedRadio4)
 	ON_COMMAND(ID_32776, &CiClickDlg::ChangeToSingleClick)
 	ON_COMMAND(ID_32777, &CiClickDlg::ChangeToDoubleClick)
+	ON_COMMAND(ID_32778, &CiClickDlg::DeleteSingleRow)
+	ON_COMMAND(ID_32779, &CiClickDlg::DeleteAllRow)
+	ON_COMMAND(ID_32781, &CiClickDlg::OpenKeySelectDlg)
+	ON_COMMAND(ID_32782, &CiClickDlg::SetSpaceKey)
 END_MESSAGE_MAP()
 
 
@@ -316,6 +313,7 @@ UINT MyThreadFunction(LPVOID pParam)
 	CiClickDlg* Wnd = (CiClickDlg*)pParam;
 	while (Wnd->isClick) {
 		for (const auto& point : pointInfo) {
+
 			if (point.event_type == 1) {
 				// 处理鼠标事件
 				UINT num = Wnd->Random_Radius;
@@ -338,10 +336,8 @@ UINT MyThreadFunction(LPVOID pParam)
 					 // 第一次点击
 					::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
 					::SendMessage(point.hwnd, WM_LBUTTONUP, 0, MAKELPARAM(x, y));
-
 					// 短暂延迟（模拟用户双击速度）
 					Sleep(GetDoubleClickTime() / 2);
-
 					// 第二次点击（双击）
 					::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
 					::SendMessage(point.hwnd, WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(x, y));
@@ -350,7 +346,38 @@ UINT MyThreadFunction(LPVOID pParam)
 				
 			}
 			else if (point.event_type == 2) {
-				// 处理键盘事件
+				// 按下修饰符键（如果有）
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
+					::SendMessage(point.hwnd, WM_KEYDOWN, VK_CONTROL, 0x00000001);
+					//keybd_event(VK_CONTROL, 0, 0, 0);        // 按下 Ctrl
+				}
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
+					::SendMessage(point.hwnd, WM_KEYDOWN, VK_SHIFT, 0x00000001);
+					//keybd_event(VK_SHIFT, 0, 0, 0);        // 按下 Ctrl
+				}
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
+					::SendMessage(point.hwnd, WM_KEYDOWN, VK_MENU, 0x00000001);
+					//keybd_event(VK_MENU, 0, 0, 0);        // 按下 Ctrl
+				}
+
+				// 按下主要按键
+				::SendMessage(point.hwnd, WM_KEYDOWN, point.hotKeyInfo.wVirtualKey, 0x00000001);
+				::SendMessage(point.hwnd, WM_KEYUP, point.hotKeyInfo.wVirtualKey, 0xC0000001);
+				//keybd_event(point.hotKeyInfo.wVirtualKey, 0, 0, 0);                // 按下 S
+				//keybd_event(point.hotKeyInfo.wVirtualKey, 0, KEYEVENTF_KEYUP, 0);  // 释放 S
+				// 抬起修饰符键（如果有）
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
+					::SendMessage(point.hwnd, WM_KEYUP, VK_MENU, 0xC0000001);
+					//keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
+				}
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
+					::SendMessage(point.hwnd, WM_KEYUP, VK_SHIFT, 0xC0000001);
+					//keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);
+				}
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
+					::SendMessage(point.hwnd, WM_KEYUP, VK_CONTROL, 0xC0000001);
+					//keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
+				}
 			}
 		
 			Sleep(Wnd->gap);
@@ -392,15 +419,6 @@ void CiClickDlg::OnBnClickedCheck3()
 }
 
 
-//void CiClickDlg::OnMouseMove(UINT nFlags, CPoint point) {
-//	if (nFlags == MK_LBUTTON) {
-		//MessageBox(_T("ASD"));
-//	}
-//	CString str;
-//	str.Format(_T("X: %d, Y: %d"), point.x, point.y);
-//
-//	CDialogEx::OnMouseMove(nFlags, point);
-//}
 
 
 void CiClickDlg::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) {
@@ -473,7 +491,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 			pI.moust_key = 1;
 		}
 		else if (Event_Type == 2) {
-			pI.keybord_key = "A";
+			//pI.keybord_key = "A";
 		}
 		pointInfo.push_back(pI);
 	
@@ -643,7 +661,6 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 			ReleaseCapture();
 		}
 		
-
 		SetCursor(LoadCursor(NULL, IDC_ARROW));
 		isDown = FALSE;
 		CPoint ptCursor;
@@ -686,7 +703,7 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 			pI.moust_key = 1;
 		}
 		else if(Event_Type == 2) {
-			pI.keybord_key = "A";
+			//pI.keybord_key = "A";
 		}
 		pointInfo.push_back(pI);
 
@@ -758,4 +775,39 @@ void CiClickDlg::ChangeToDoubleClick()
 	// TODO: 修改点击方式为双击
 	pointInfo[select_row].moust_key = 2;
 	list.SetItemText(select_row, 3, L"左键双击");
+}
+
+
+void CiClickDlg::DeleteSingleRow()
+{
+	// 删除单行
+	if (select_row >= 0 && select_row < pointInfo.size()) {
+		pointInfo.erase(pointInfo.begin() + select_row); // 删除第select_row个元素
+	}
+	list.DeleteItem(select_row);
+}
+
+void CiClickDlg::DeleteAllRow()
+{
+	// 删除所有元素
+	pointInfo.clear(); // 删除所有元素
+	list.DeleteAllItems(); // 删除所有行
+}
+
+
+void CiClickDlg::OpenKeySelectDlg()
+{
+		// 打开键位选择模态框
+	Key_Select keySelect;
+	if (keySelect.DoModal() == IDOK) { // 阻塞直到模态框关闭[7](@ref)
+		pointInfo[select_row].hotKeyInfo = keySelect.m_hotKeyInfo;
+		list.SetItemText(select_row, 3, keySelect.m_hotKeyInfo.strDisplay);
+	}
+}
+
+void CiClickDlg::SetSpaceKey()
+{
+	HotKeyInfo space = { VK_SPACE ,'/0',L"空格"};
+	pointInfo[select_row].hotKeyInfo = space;
+	list.SetItemText(select_row, 3, L"空格");
 }
