@@ -72,6 +72,7 @@ public:
 	CButton random_check;
 	BOOL isDown = FALSE;
 	BOOL start_watch = FALSE;
+	INT Event_Type = 1;  // 1：鼠标事件   2：键盘事件
 	afx_msg void OnEnChangeEdit1();
 	CStatic pic_box;
 	BOOL need_hide = FALSE;
@@ -81,5 +82,9 @@ public:
 	afx_msg void OnBnClickedCheck4();
 	CButton hide_check;
 
+	afx_msg void OnBnClickedRadio3();
+	afx_msg void OnBnClickedRadio4();
+	afx_msg void ChangeToSingleClick();
+	afx_msg void ChangeToDoubleClick();
 };
 

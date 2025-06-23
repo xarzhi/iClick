@@ -11,10 +11,12 @@
 using namespace std;
 
 typedef struct PointInfo {
-	int x;
-	int y;
-	HWND hwnd;
-
+	int x=0;
+	int y=0;
+	HWND hwnd=NULL;
+	int event_type=1;
+	int moust_key=1;			// 1:单机    2：双击
+	CString keybord_key=L"";
 }PointInfo;
 
 
@@ -115,6 +117,10 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_WM_LBUTTONUP()
 	ON_WM_MOUSEMOVE()
 	ON_BN_CLICKED(IDC_CHECK4, &CiClickDlg::OnBnClickedCheck4)
+	ON_BN_CLICKED(IDC_RADIO3, &CiClickDlg::OnBnClickedRadio3)
+	ON_BN_CLICKED(IDC_RADIO4, &CiClickDlg::OnBnClickedRadio4)
+	ON_COMMAND(ID_32776, &CiClickDlg::ChangeToSingleClick)
+	ON_COMMAND(ID_32777, &CiClickDlg::ChangeToDoubleClick)
 END_MESSAGE_MAP()
 
 
@@ -151,14 +157,16 @@ BOOL CiClickDlg::OnInitDialog()
 
 	// TODO: 在此添加额外的初始化代码
 
-	CRect rect;
+	/*CRect rect;
 	list.GetClientRect(&rect);
-	int width = rect.Width() / 4;
+	int width = rect.Width() / 4;*/
 	list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);	// 整行选择、网格线
-	list.InsertColumn(0, _T("X坐标"), LVCFMT_LEFT, width);	// 插入第2列的列名
-	list.InsertColumn(1, _T("Y坐标"), LVCFMT_LEFT, width);	// 插入第3列的列名
-	list.InsertColumn(2, _T("窗口句柄"), LVCFMT_LEFT, width);	// 插入第4列的列名
-	list.InsertColumn(3, _T("窗口标题"), LVCFMT_LEFT, width-20);	// 插入第5列的列名
+	list.InsertColumn(0, _T("X坐标"), LVCFMT_LEFT, 90);
+	list.InsertColumn(1, _T("Y坐标"), LVCFMT_LEFT, 90);	
+	list.InsertColumn(2, _T("操作类型"), LVCFMT_LEFT,100);	
+	list.InsertColumn(3, _T("操作方式"), LVCFMT_LEFT, 100);	
+	//list.InsertColumn(2, _T("窗口句柄"), LVCFMT_LEFT, width);	
+	list.InsertColumn(4, _T("窗口标题"), LVCFMT_LEFT, 120);
 
 
 	// 为列表视图控件添加全行选中和栅格风格   
@@ -182,12 +190,18 @@ BOOL CiClickDlg::OnInitDialog()
 	start_hotkey.SetHotKey(VK_F3,NULL);
 	RegisterHotKey(m_hWnd, 0x124, NULL, VK_F3);
 
+
 	random_check.SetCheck(isRandomClick);
 
+	// 默认禁用模糊点击范围设置
 	blurry_ipt.EnableWindow(FALSE);
+
+	// 表格选中行默认为-1，未选择任何行
 	select_row = -1;
 
-	
+	// 初始化单选按钮
+	((CButton*)GetDlgItem(IDC_RADIO3))->SetCheck(TRUE); //选上
+	((CButton*)GetDlgItem(IDC_RADIO4))->SetCheck(FALSE);//不选上
 
 	//// 给图片空间设置位图
 	CBitmap m_bmp;
@@ -295,23 +309,50 @@ int GetRand(int MIN, int MAX)//产生随机数
 	    return (int)(rand() * (MAX - MIN) / max + MIN);
 }
 
+
+// 多线程触发事件
 UINT MyThreadFunction(LPVOID pParam)
 {
 	CiClickDlg* Wnd = (CiClickDlg*)pParam;
 	while (Wnd->isClick) {
 		for (const auto& point : pointInfo) {
-			UINT num=Wnd->Random_Radius;
-			int x, y;
-			if (Wnd->isRandomClick) {
-				 x = GetRand(point.x - num, point.x + num);
-				 y = GetRand(point.y - num, point.y + num);
+			if (point.event_type == 1) {
+				// 处理鼠标事件
+				UINT num = Wnd->Random_Radius;
+				int x, y;
+				if (Wnd->isRandomClick) {
+					x = GetRand(point.x - num, point.x + num);
+					y = GetRand(point.y - num, point.y + num);
+				}
+				else {
+					x = point.x;
+					y = point.y;
+				}
+				if (point.moust_key == 1) {
+					// 单机
+					::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+					::SendMessage(point.hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
+				}
+				else if (point.moust_key == 2) {
+					// 双击
+					 // 第一次点击
+					::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+					::SendMessage(point.hwnd, WM_LBUTTONUP, 0, MAKELPARAM(x, y));
+
+					// 短暂延迟（模拟用户双击速度）
+					Sleep(GetDoubleClickTime() / 2);
+
+					// 第二次点击（双击）
+					::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+					::SendMessage(point.hwnd, WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(x, y));
+					::SendMessage(point.hwnd, WM_LBUTTONUP, 0, MAKELPARAM(x, y));
+				}
+				
 			}
-			else {
-				x = point.x;
-				y = point.y;
+			else if (point.event_type == 2) {
+				// 处理键盘事件
 			}
-			::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
-			::SendMessage(point.hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
+		
 			Sleep(Wnd->gap);
 		}
 		Sleep(Wnd->loop);
@@ -404,9 +445,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		hWnd->GetWindowTextW(str);
 		wnd_title_ipt.SetWindowTextW(str);
 
-		// 窗口句柄
-		CString strHandle = GetWindowHandleDecimal(hWnd);
-		hwnd_ipt.SetWindowTextW(strHandle);
+	
 
 		CString x, y;
 		x.Format(_T("%d"), ptCursor.x);
@@ -414,9 +453,29 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		int iRow = list.GetItemCount(); //获取行数
 		list.InsertItem(iRow, x);
 		list.SetItemText(iRow, 1, y);
-		list.SetItemText(iRow, 2, strHandle);
-		list.SetItemText(iRow, 3, str);
-		pointInfo.push_back({ ptCursor.x,ptCursor.y,hWnd->m_hWnd });
+		if (Event_Type == 1) {
+			list.SetItemText(iRow, 2, L"鼠标");
+			list.SetItemText(iRow, 3, L"左键单击");
+		}
+		else if (Event_Type == 2) {
+			list.SetItemText(iRow, 2, L"键盘");
+			list.SetItemText(iRow, 3, L"");
+		}
+		list.SetItemText(iRow, 4, str);
+
+		// 同步到数组
+		PointInfo pI;
+		pI.x = ptCursor.x;
+		pI.y = ptCursor.y;
+		pI.hwnd = hWnd->m_hWnd;
+		pI.event_type = Event_Type;
+		if (Event_Type == 1) {
+			pI.moust_key = 1;
+		}
+		else if (Event_Type == 2) {
+			pI.keybord_key = "A";
+		}
+		pointInfo.push_back(pI);
 	
 	}
 	else if (nHotKeyId == 0x124) {
@@ -489,12 +548,26 @@ void CiClickDlg::OnNMRClickList1(NMHDR* pNMHDR, LRESULT* pResult)
 		select_row = row;
 		CPoint pt;
 		GetCursorPos(&pt);
-		CMenu menu; 
-		menu.LoadMenu(IDR_MENU1);
+		// 加载鼠标点击方式的菜单
+		if (pointInfo[row].event_type == 1) {
+			CMenu menu;
+			menu.LoadMenu(IDR_MENU1);
 
-		CMenu* popmenu;
-		popmenu = menu.GetSubMenu(0);
-		popmenu->TrackPopupMenu(TPM_RIGHTBUTTON, pt.x, pt.y, this);
+			CMenu* popmenu;
+			popmenu = menu.GetSubMenu(0);
+			popmenu->TrackPopupMenu(TPM_RIGHTBUTTON, pt.x, pt.y, this);
+		}
+		// 加载设置键位的菜单
+		else if (pointInfo[row].event_type == 2) {
+			CMenu menu;
+			menu.LoadMenu(IDR_MENU2);
+
+			CMenu* popmenu;
+			popmenu = menu.GetSubMenu(0);
+			popmenu->TrackPopupMenu(TPM_RIGHTBUTTON, pt.x, pt.y, this);
+		}
+
+
 	}
 
 	*pResult = 0;
@@ -591,11 +664,32 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		x.Format(_T("%d"), ptCursor.x);
 		y.Format(_T("%d"), ptCursor.y);
 		int iRow = list.GetItemCount(); //获取行数
+
 		list.InsertItem(iRow, x);
 		list.SetItemText(iRow, 1, y);
-		list.SetItemText(iRow, 2, strHandle);
-		list.SetItemText(iRow, 3, str);
-		pointInfo.push_back({ ptCursor.x,ptCursor.y,hWnd->m_hWnd });
+		if (Event_Type == 1) {
+			list.SetItemText(iRow, 2, L"鼠标");
+			list.SetItemText(iRow, 3, L"左键单击");
+		}
+		else if (Event_Type == 2) {
+			list.SetItemText(iRow, 2, L"键盘");
+			list.SetItemText(iRow, 3, L"");
+		}
+		list.SetItemText(iRow, 4, str);
+
+		PointInfo pI;
+		pI.x = ptCursor.x;
+		pI.y = ptCursor.y;
+		pI.hwnd = hWnd->m_hWnd;
+		pI.event_type = Event_Type;
+		if (Event_Type==1) {
+			pI.moust_key = 1;
+		}
+		else if(Event_Type == 2) {
+			pI.keybord_key = "A";
+		}
+		pointInfo.push_back(pI);
+
 		if (need_hide == TRUE) {
 			ShowWindow(SW_RESTORE);
 		}
@@ -634,4 +728,34 @@ void CiClickDlg::OnBnClickedCheck4()
 {
 	BOOL hide = hide_check.GetCheck();
 	need_hide = hide;
+}
+
+// 修改事件类型为鼠标事件
+void CiClickDlg::OnBnClickedRadio3()
+{
+	if (IsDlgButtonChecked(IDC_RADIO3) == BST_CHECKED) {
+		Event_Type = 1;
+	}
+}
+// 修改事件类型为键盘事件
+void CiClickDlg::OnBnClickedRadio4()
+{
+	if (IsDlgButtonChecked(IDC_RADIO4) == BST_CHECKED) {
+		Event_Type = 2;
+	}
+}
+
+void CiClickDlg::ChangeToSingleClick()
+{
+	// TODO: 修改点击方式为单击
+	pointInfo[select_row].moust_key = 1;
+	list.SetItemText(select_row, 3, L"左键单击");
+
+}
+
+void CiClickDlg::ChangeToDoubleClick()
+{
+	// TODO: 修改点击方式为双击
+	pointInfo[select_row].moust_key = 2;
+	list.SetItemText(select_row, 3, L"左键双击");
 }
