@@ -34,7 +34,8 @@ BOOL Key_Select::OnInitDialog()
     CDialogEx::OnInitDialog();
  
     m_hotKeyInfo = {};
-    return TRUE;
+    m_hotkey.SetFocus();
+    return FALSE;
 }
 
 

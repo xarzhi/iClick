@@ -346,37 +346,38 @@ UINT MyThreadFunction(LPVOID pParam)
 				
 			}
 			else if (point.event_type == 2) {
+				::SetForegroundWindow(point.hwnd);  // 确保目标窗口在前台
 				// 按下修饰符键（如果有）
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
-					::SendMessage(point.hwnd, WM_KEYDOWN, VK_CONTROL, 0x00000001);
-					//keybd_event(VK_CONTROL, 0, 0, 0);        // 按下 Ctrl
+					//::SendMessage(point.hwnd, WM_KEYDOWN, VK_CONTROL, 0x00000001);
+					keybd_event(VK_CONTROL, 0, 0, 0);        // 按下 Ctrl
 				}
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
-					::SendMessage(point.hwnd, WM_KEYDOWN, VK_SHIFT, 0x00000001);
-					//keybd_event(VK_SHIFT, 0, 0, 0);        // 按下 Ctrl
+					//::SendMessage(point.hwnd, WM_KEYDOWN, VK_SHIFT, 0x00000001);
+					keybd_event(VK_SHIFT, 0, 0, 0);        // 按下 Ctrl
 				}
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
-					::SendMessage(point.hwnd, WM_KEYDOWN, VK_MENU, 0x00000001);
-					//keybd_event(VK_MENU, 0, 0, 0);        // 按下 Ctrl
+					//::SendMessage(point.hwnd, WM_KEYDOWN, VK_MENU, 0x00000001);
+					keybd_event(VK_MENU, 0, 0, 0);        // 按下 Ctrl
 				}
 
 				// 按下主要按键
-				::SendMessage(point.hwnd, WM_KEYDOWN, point.hotKeyInfo.wVirtualKey, 0x00000001);
-				::SendMessage(point.hwnd, WM_KEYUP, point.hotKeyInfo.wVirtualKey, 0xC0000001);
-				//keybd_event(point.hotKeyInfo.wVirtualKey, 0, 0, 0);                // 按下 S
-				//keybd_event(point.hotKeyInfo.wVirtualKey, 0, KEYEVENTF_KEYUP, 0);  // 释放 S
+				//::SendMessage(point.hwnd, WM_KEYDOWN, point.hotKeyInfo.wVirtualKey, 0x00000001);
+				//::SendMessage(point.hwnd, WM_KEYUP, point.hotKeyInfo.wVirtualKey, 0xC0000001);
+				keybd_event(point.hotKeyInfo.wVirtualKey, 0, 0, 0);                // 按下 S
+				keybd_event(point.hotKeyInfo.wVirtualKey, 0, KEYEVENTF_KEYUP, 0);  // 释放 S
 				// 抬起修饰符键（如果有）
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
-					::SendMessage(point.hwnd, WM_KEYUP, VK_MENU, 0xC0000001);
-					//keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
+					//::SendMessage(point.hwnd, WM_KEYUP, VK_MENU, 0xC0000001);
+					keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
 				}
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
-					::SendMessage(point.hwnd, WM_KEYUP, VK_SHIFT, 0xC0000001);
-					//keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);
+					//::SendMessage(point.hwnd, WM_KEYUP, VK_SHIFT, 0xC0000001);
+					keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);
 				}
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
-					::SendMessage(point.hwnd, WM_KEYUP, VK_CONTROL, 0xC0000001);
-					//keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
+					//::SendMessage(point.hwnd, WM_KEYUP, VK_CONTROL, 0xC0000001);
+					keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
 				}
 			}
 		
