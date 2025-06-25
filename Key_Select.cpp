@@ -40,11 +40,6 @@ BOOL Key_Select::OnInitDialog()
 
 
 
-
-
-
-
-
 void Key_Select::OnFinalRelease()
 {
 	// 释放了对自动化对象的最后一个引用后，将调用

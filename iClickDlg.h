@@ -18,8 +18,10 @@ typedef struct PointInfo {
 	HWND hwnd = NULL;
 	int event_type = 1;			// 事件类型        1：鼠标事件   2：键盘事件
 	int moust_key = 1;			// 鼠标点击类型    1:单机    2：双击
+	UINT gap = 20;
 	HotKeyInfo hotKeyInfo;
 }PointInfo;
+
 // CiClickDlg 对话框
 class CiClickDlg : public CDialogEx
 {
@@ -111,5 +113,7 @@ public:
 	afx_msg void OpenKeySelectDlg();
 	CEdit loop_edit;
 	UINT loop_times = 0;
+	afx_msg void OpenGapModal();
+	afx_msg void OpenGapDialog1();
 };
 

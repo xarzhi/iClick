@@ -39,6 +39,9 @@
     <ClInclude Include="MainDlg.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="GapModal.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="iClick.cpp">
@@ -54,6 +57,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="MainDlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="GapModal.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

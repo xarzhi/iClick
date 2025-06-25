@@ -10,6 +10,7 @@
 #include "Key_Select.h"
 #include <vector>
 #include "MainDlg.h"
+#include "GapModal.h"
 using namespace std;
 
 
@@ -121,6 +122,8 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_COMMAND(ID_32781, &CiClickDlg::OpenKeySelectDlg)
 
 	ON_COMMAND(ID_32785, &CiClickDlg::OpenKeySelectDlg)
+	ON_COMMAND(ID_32787, &CiClickDlg::OpenGapModal)
+	ON_COMMAND(ID_32786, &CiClickDlg::OpenGapDialog1)
 END_MESSAGE_MAP()
 
 
@@ -161,12 +164,12 @@ BOOL CiClickDlg::OnInitDialog()
 	list.GetClientRect(&rect);
 	int width = rect.Width() / 4;*/
 	list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);	// 整行选择、网格线
-	list.InsertColumn(0, _T("X坐标"), LVCFMT_LEFT, 90);
-	list.InsertColumn(1, _T("Y坐标"), LVCFMT_LEFT, 90);	
+	list.InsertColumn(0, _T("X坐标"), LVCFMT_LEFT, 50);
+	list.InsertColumn(1, _T("Y坐标"), LVCFMT_LEFT, 50);	
 	list.InsertColumn(2, _T("操作类型"), LVCFMT_LEFT,100);	
 	list.InsertColumn(3, _T("操作方式"), LVCFMT_LEFT, 100);	
-	//list.InsertColumn(2, _T("窗口句柄"), LVCFMT_LEFT, width);	
 	list.InsertColumn(4, _T("窗口标题"), LVCFMT_LEFT, 120);
+	list.InsertColumn(5, _T("延迟"), LVCFMT_LEFT, 60);
 
 
 	// 为列表视图控件添加全行选中和栅格风格   
@@ -314,18 +317,11 @@ int GetRand(int MIN, int MAX)//产生随机数
 	    return (int)(rand() * (MAX - MIN) / max + MIN);
 }
 
-
 // 多线程触发事件
 UINT MyThreadFunction(LPVOID pParam)
 {
 	CiClickDlg* Wnd = (CiClickDlg*)pParam;
 	UINT loop_times= Wnd->loop_times;
-	
-	//UINT scanCode = MapVirtualKey(VK_CONTROL, MAPVK_VK_TO_VSC);
-	//LPARAM lParamDown = 1 | (scanCode << 16); // 按下：重复计数=1 + 扫描码
-	//LPARAM lParamUp = lParamDown | 0xC0000000; // 释放：添加状态标志（31位=1）
-
-
 	
 	while (Wnd->isClick) {
 		if (Wnd->loop_times != 0) {
@@ -336,6 +332,8 @@ UINT MyThreadFunction(LPVOID pParam)
 			};
 		}
 		for (const auto& point : pointInfo) {
+			Sleep(point.gap);			// 延迟
+
 			if (point.event_type == 1) {
 				// 处理鼠标事件
 				UINT num = Wnd->Random_Radius;
@@ -372,7 +370,6 @@ UINT MyThreadFunction(LPVOID pParam)
 				::SetForegroundWindow(point.hwnd);  // 确保目标窗口在前台
 
 				// ******************* keybd_event *****************
-
 				// 按下修饰符键（如果有）
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
 					keybd_event(VK_CONTROL, 0, 0, 0);        // 按下 Ctrl
@@ -419,6 +416,7 @@ UINT MyThreadFunction(LPVOID pParam)
 					::SendMessage(point.hwnd, WM_KEYUP, VK_CONTROL, lParamUp);
 				}*/
 			}
+
 			Sleep(Wnd->gap);			// 单次操作间隔
 		}
 		Sleep(Wnd->loop);				// 每一轮间隔
@@ -526,6 +524,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 			list.SetItemText(iRow, 3, L"");
 		}
 		list.SetItemText(iRow, 4, str);
+		list.SetItemText(iRow, 5, _T("0"));
 
 		// 同步到数组
 		PointInfo pI;
@@ -533,12 +532,11 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		pI.y = ptCursor.y;
 		pI.hwnd = hWnd->m_hWnd;
 		pI.event_type = Event_Type;
+		pI.gap = 0;
 		if (Event_Type == 1) {
 			pI.moust_key = 1;
 		}
-		else if (Event_Type == 2) {
-			//pI.keybord_key = "A";
-		}
+		
 		pointInfo.push_back(pI);
 	
 	}
@@ -740,12 +738,14 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 			list.SetItemText(iRow, 3, L"");
 		}
 		list.SetItemText(iRow, 4, str);
+		list.SetItemText(iRow, 5, _T("0"));
 
 		PointInfo pI;
 		pI.x = ptCursor.x;
 		pI.y = ptCursor.y;
 		pI.hwnd = hWnd->m_hWnd;
 		pI.event_type = Event_Type;
+		pI.gap = 0;
 		if (Event_Type==1) {
 			pI.moust_key = 1;
 		}
@@ -852,5 +852,30 @@ void CiClickDlg::OpenKeySelectDlg()
 	if (keySelect.DoModal() == IDOK) { // 阻塞直到模态框关闭[7](@ref)
 		pointInfo[select_row].hotKeyInfo = keySelect.m_hotKeyInfo;
 		list.SetItemText(select_row, 3, keySelect.m_hotKeyInfo.strDisplay);
+	}
+}
+
+void CiClickDlg::OpenGapModal()
+{
+	// TODO: 在此添加命令处理程序代码
+	GapModal gapModal(NULL, pointInfo[select_row].gap);
+
+	if (gapModal.DoModal() == IDOK) { // 阻塞直到模态框关闭[7](@ref)
+		pointInfo[select_row].gap = gapModal.gap;
+		CString str;
+		str.Format(_T("%d"), gapModal.gap);
+		list.SetItemText(select_row, 5, str);
+	}
+}
+
+void CiClickDlg::OpenGapDialog1()
+{
+	// TODO: 在此添加命令处理程序代码
+	GapModal gapModal(NULL, pointInfo[select_row].gap);
+	if (gapModal.DoModal() == IDOK) { // 阻塞直到模态框关闭[7](@ref)
+		pointInfo[select_row].gap = gapModal.gap;
+		CString str;
+		str.Format(_T("%d"), gapModal.gap);
+		list.SetItemText(select_row, 5, str);
 	}
 }

@@ -185,6 +185,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="GapModal.h" />
     <ClInclude Include="iClick.h" />
     <ClInclude Include="iClickDlg.h" />
     <ClInclude Include="Key_Select.h" />
@@ -194,6 +195,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="GapModal.cpp" />
     <ClCompile Include="iClick.cpp" />
     <ClCompile Include="iClickDlg.cpp" />
     <ClCompile Include="Key_Select.cpp" />
