@@ -36,6 +36,9 @@
     <ClInclude Include="Key_Select.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="MainDlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="iClick.cpp">
@@ -48,6 +51,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Key_Select.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="MainDlg.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

@@ -188,6 +188,7 @@
     <ClInclude Include="iClick.h" />
     <ClInclude Include="iClickDlg.h" />
     <ClInclude Include="Key_Select.h" />
+    <ClInclude Include="MainDlg.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
@@ -196,6 +197,7 @@
     <ClCompile Include="iClick.cpp" />
     <ClCompile Include="iClickDlg.cpp" />
     <ClCompile Include="Key_Select.cpp" />
+    <ClCompile Include="MainDlg.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

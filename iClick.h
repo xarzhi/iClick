@@ -3,11 +3,7 @@
 //
 
 #pragma once
-
-
-
 #include "resource.h"		// 主符号
-
 
 // CiClickApp:
 // 有关此类的实现，请参阅 iClick.cpp

@@ -9,6 +9,7 @@
 #include "afxdialogex.h"
 #include "Key_Select.h"
 #include <vector>
+#include "MainDlg.h"
 using namespace std;
 
 
@@ -181,7 +182,9 @@ BOOL CiClickDlg::OnInitDialog()
 	blurry_ipt.SetWindowTextW(Random_Radius_Str);
 
 	setOnTop_Check.SetCheck(TRUE);
-	this->SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+	CWnd* mainWnd = AfxGetMainWnd();
+	mainWnd->SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+
 
 
 	//注册热键 F6
@@ -450,11 +453,14 @@ void CiClickDlg::OnBnClickedButton1()
 // 设置窗口是否置顶
 void CiClickDlg::OnBnClickedCheck3()
 {
+	CWnd* mainWnd = AfxGetMainWnd();
+	mainWnd->SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+	
 	if (setOnTop_Check.GetCheck() ==  TRUE) {
-		this->SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+		mainWnd->SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 	}
 	else {
-		this->SetWindowPos(&wndNoTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+		mainWnd->SetWindowPos(&wndNoTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 	}
 }
 
@@ -683,7 +689,8 @@ void CiClickDlg::OnLButtonDown(UINT nFlags, CPoint point)
 			}
 			SetCursor(LoadCursor(NULL, IDC_CROSS));
 			if (need_hide==TRUE) {
-				ShowWindow(SW_MINIMIZE);              // 隐藏当前窗口
+				CWnd* mainWnd = AfxGetMainWnd();
+				mainWnd->ShowWindow(SW_MINIMIZE);
 			}
 			SetCapture();
 
@@ -747,8 +754,11 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		}
 		pointInfo.push_back(pI);
 
+
+		// 恢复显示主窗口
 		if (need_hide == TRUE) {
-			ShowWindow(SW_RESTORE);
+			CWnd* mainWnd = AfxGetMainWnd();
+			mainWnd->ShowWindow(SW_RESTORE);
 		}
 
 	}
