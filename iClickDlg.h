@@ -76,7 +76,7 @@ public:
 	UINT Random_Radius = 0;
 	CButton start_btn;
 	CEdit gap_ipt;
-	UINT watch_hotkey = VK_F1;
+	UINT watch_hotkey = VK_F6;
 	afx_msg void OnEnChangeEdit5();
 	CEdit loop_ipt;
 	CEdit blurry_ipt;
@@ -109,6 +109,7 @@ public:
 	afx_msg void DeleteSingleRow();
 	afx_msg void DeleteAllRow();
 	afx_msg void OpenKeySelectDlg();
-	afx_msg void SetSpaceKey();
+	CEdit loop_edit;
+	UINT loop_times = 0;
 };
 

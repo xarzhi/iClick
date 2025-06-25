@@ -82,6 +82,7 @@ void CiClickDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_CHECK1, random_check);
 	DDX_Control(pDX, IDC_STATIC_PIC, pic_box);
 	DDX_Control(pDX, IDC_CHECK4, hide_check);
+	DDX_Control(pDX, IDC_EDIT6, loop_edit);
 }
 
 BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
@@ -117,7 +118,8 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_COMMAND(ID_32778, &CiClickDlg::DeleteSingleRow)
 	ON_COMMAND(ID_32779, &CiClickDlg::DeleteAllRow)
 	ON_COMMAND(ID_32781, &CiClickDlg::OpenKeySelectDlg)
-	ON_COMMAND(ID_32782, &CiClickDlg::SetSpaceKey)
+
+	ON_COMMAND(ID_32785, &CiClickDlg::OpenKeySelectDlg)
 END_MESSAGE_MAP()
 
 
@@ -184,8 +186,8 @@ BOOL CiClickDlg::OnInitDialog()
 
 	//注册热键 F6
 	hotkey1.SetHotKey(watch_hotkey, NULL);
-	start_hotkey.SetHotKey(VK_F3,NULL);
-	RegisterHotKey(m_hWnd, 0x124, NULL, VK_F3);
+	start_hotkey.SetHotKey(VK_F7,NULL);
+	RegisterHotKey(m_hWnd, 0x124, NULL, VK_F7);
 
 
 	random_check.SetCheck(isRandomClick);
@@ -208,6 +210,9 @@ BOOL CiClickDlg::OnInitDialog()
 	pPic->SetBitmap(m_bmp);
 	m_bmp.Detach(); // 关键！防止bmp析构时删除位图
 
+
+
+	loop_edit.SetWindowTextW(_T("0"));
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -311,9 +316,23 @@ int GetRand(int MIN, int MAX)//产生随机数
 UINT MyThreadFunction(LPVOID pParam)
 {
 	CiClickDlg* Wnd = (CiClickDlg*)pParam;
-	while (Wnd->isClick) {
-		for (const auto& point : pointInfo) {
+	UINT loop_times= Wnd->loop_times;
+	
+	//UINT scanCode = MapVirtualKey(VK_CONTROL, MAPVK_VK_TO_VSC);
+	//LPARAM lParamDown = 1 | (scanCode << 16); // 按下：重复计数=1 + 扫描码
+	//LPARAM lParamUp = lParamDown | 0xC0000000; // 释放：添加状态标志（31位=1）
 
+
+	
+	while (Wnd->isClick) {
+		if (Wnd->loop_times != 0) {
+			if (loop_times == 0) {
+				Wnd->isClick = false;
+				Wnd->start_btn.SetWindowTextW(_T("开始点击"));
+				return 0;
+			};
+		}
+		for (const auto& point : pointInfo) {
 			if (point.event_type == 1) {
 				// 处理鼠标事件
 				UINT num = Wnd->Random_Radius;
@@ -346,44 +365,63 @@ UINT MyThreadFunction(LPVOID pParam)
 				
 			}
 			else if (point.event_type == 2) {
+				// 处理键盘事件
 				::SetForegroundWindow(point.hwnd);  // 确保目标窗口在前台
+
+				// ******************* keybd_event *****************
+
 				// 按下修饰符键（如果有）
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
-					//::SendMessage(point.hwnd, WM_KEYDOWN, VK_CONTROL, 0x00000001);
 					keybd_event(VK_CONTROL, 0, 0, 0);        // 按下 Ctrl
 				}
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
-					//::SendMessage(point.hwnd, WM_KEYDOWN, VK_SHIFT, 0x00000001);
-					keybd_event(VK_SHIFT, 0, 0, 0);        // 按下 Ctrl
+					keybd_event(VK_SHIFT, 0, 0, 0);        // 按下 Shift
 				}
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
-					//::SendMessage(point.hwnd, WM_KEYDOWN, VK_MENU, 0x00000001);
-					keybd_event(VK_MENU, 0, 0, 0);        // 按下 Ctrl
+					keybd_event(VK_MENU, 0, 0, 0);        // 按下 ALT
 				}
+				keybd_event(point.hotKeyInfo.wVirtualKey, 0, 0, 0);             
+				keybd_event(point.hotKeyInfo.wVirtualKey, 0, KEYEVENTF_KEYUP, 0); 
 
-				// 按下主要按键
-				//::SendMessage(point.hwnd, WM_KEYDOWN, point.hotKeyInfo.wVirtualKey, 0x00000001);
-				//::SendMessage(point.hwnd, WM_KEYUP, point.hotKeyInfo.wVirtualKey, 0xC0000001);
-				keybd_event(point.hotKeyInfo.wVirtualKey, 0, 0, 0);                // 按下 S
-				keybd_event(point.hotKeyInfo.wVirtualKey, 0, KEYEVENTF_KEYUP, 0);  // 释放 S
-				// 抬起修饰符键（如果有）
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
-					//::SendMessage(point.hwnd, WM_KEYUP, VK_MENU, 0xC0000001);
-					keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
+					keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);   // 松开 ALT
 				}
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
-					//::SendMessage(point.hwnd, WM_KEYUP, VK_SHIFT, 0xC0000001);
-					keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);
+					keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);  // 松开 SHIFT
 				}
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
-					//::SendMessage(point.hwnd, WM_KEYUP, VK_CONTROL, 0xC0000001);
-					keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
+					keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);  // 松开 Ctrl
 				}
+
+			
+				// ******************* SendMessage *****************
+			/*	if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
+					::SendMessage(point.hwnd, WM_KEYDOWN, VK_CONTROL, lParamDown);
+				}
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
+					::SendMessage(point.hwnd, WM_KEYDOWN, VK_SHIFT, lParamDown);
+				}
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
+					::SendMessage(point.hwnd, WM_KEYDOWN, VK_MENU, lParamDown);
+				}
+				::SendMessage(point.hwnd, WM_KEYDOWN, point.hotKeyInfo.wVirtualKey, lParamDown);
+				::SendMessage(point.hwnd, WM_KEYUP, point.hotKeyInfo.wVirtualKey, lParamUp);
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
+					::SendMessage(point.hwnd, WM_KEYUP, VK_MENU, lParamUp);
+				}
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
+					::SendMessage(point.hwnd, WM_KEYUP, VK_SHIFT, lParamUp);
+				}
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
+					::SendMessage(point.hwnd, WM_KEYUP, VK_CONTROL, lParamUp);
+				}*/
 			}
-		
-			Sleep(Wnd->gap);
+			Sleep(Wnd->gap);			// 单次操作间隔
 		}
-		Sleep(Wnd->loop);
+		Sleep(Wnd->loop);				// 每一轮间隔
+		if (Wnd->loop_times != 0) {
+			loop_times--;
+		}
 	}
 	return 0; // 线程退出码
 }
@@ -395,7 +433,8 @@ void CiClickDlg::OnBnClickedButton1()
 		MessageBox(_T("请添加坐标信息"));
 		return;
 	}
-
+	loop_times = GetDlgItemInt(IDC_EDIT6, NULL, FALSE);
+	
 	if (isClick == TRUE) { 
 		start_btn.SetWindowTextW(_T("开始点击"));
 		isClick = FALSE;
@@ -804,11 +843,4 @@ void CiClickDlg::OpenKeySelectDlg()
 		pointInfo[select_row].hotKeyInfo = keySelect.m_hotKeyInfo;
 		list.SetItemText(select_row, 3, keySelect.m_hotKeyInfo.strDisplay);
 	}
-}
-
-void CiClickDlg::SetSpaceKey()
-{
-	HotKeyInfo space = { VK_SPACE ,'/0',L"空格"};
-	pointInfo[select_row].hotKeyInfo = space;
-	list.SetItemText(select_row, 3, L"空格");
 }

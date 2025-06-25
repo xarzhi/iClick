@@ -22,6 +22,23 @@ public:
 		if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_ESCAPE) {
 			return TRUE;
 		}
+		if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN) {
+			m_hotkey.SetHotKey(VK_RETURN,NULL);
+			return TRUE;
+		}
+		if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_BACK) {
+			m_hotkey.SetHotKey(VK_BACK,NULL);
+			return TRUE;
+		}
+		if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_SPACE) {
+			m_hotkey.SetHotKey(VK_SPACE,NULL);
+			return TRUE;				
+		}
+		if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_TAB) {
+			m_hotkey.SetHotKey(VK_TAB,NULL);
+			return TRUE;
+		}
+
 		return CDialogEx::PreTranslateMessage(pMsg);
 	}
 	virtual void OnOK();
