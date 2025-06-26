@@ -39,4 +39,7 @@ public:
 	CEdit gap_ipt;
 	int main_tab_index;
 	afx_msg void OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2);
+	afx_msg void OnHotKeyChanged();
+	BOOL isClick = FALSE;
+	afx_msg void OnEnChangeEdit1();
 };

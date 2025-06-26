@@ -18,7 +18,6 @@
 #define IDD_DIALOG1                     152
 #define IDD_MAIN_DIALOG                 154
 #define IDD_GAP_DIALOG                  156
-#define IDD_DIALOG2                     158
 #define IDD_FRONTDLG                    158
 #define IDC_HOTKEY3                     1007
 #define IDC_BUTTON1                     1008
