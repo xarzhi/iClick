@@ -467,6 +467,7 @@ CString GetWindowHandleDecimal(CWnd* pWnd) {
 
 void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 {
+	if (main_tab_index != 0) return;
 	if (nHotKeyId == 0x123) {
 		// TODO: 在此添加消息处理程序代码和/或调用默认值
 		if (start_watch == FALSE) return;

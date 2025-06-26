@@ -115,5 +115,7 @@ public:
 	UINT loop_times = 0;
 	afx_msg void OpenGapModal();
 	afx_msg void OpenGapDialog1();
+	int main_tab_index;
+
 };
 

@@ -37,4 +37,6 @@ public:
 	UINT start_hotkey = VK_F8;
 	CHotKeyCtrl start_hotkey_ipt;
 	CEdit gap_ipt;
+	int main_tab_index;
+	afx_msg void OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2);
 };

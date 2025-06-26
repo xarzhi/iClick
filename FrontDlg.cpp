@@ -28,11 +28,6 @@ FrontDlg::~FrontDlg()
 
 void FrontDlg::OnFinalRelease()
 {
-	// 释放了对自动化对象的最后一个引用后，将调用
-	// OnFinalRelease。  基类将自动
-	// 删除该对象。  在调用该基类之前，请添加您的
-	// 对象所需的附加清理代码。
-
 	CDialogEx::OnFinalRelease();
 }
 
@@ -45,6 +40,7 @@ void FrontDlg::DoDataExchange(CDataExchange* pDX)
 
 
 BEGIN_MESSAGE_MAP(FrontDlg, CDialogEx)
+	ON_WM_HOTKEY()
 END_MESSAGE_MAP()
 
 BOOL FrontDlg::OnInitDialog()
@@ -52,11 +48,32 @@ BOOL FrontDlg::OnInitDialog()
 	CDialogEx::OnInitDialog();
 
 	start_hotkey_ipt.SetHotKey(start_hotkey,NULL);
+	RegisterHotKey(m_hWnd, 0x125, NULL, VK_F8);
 
 	gap_ipt.SetWindowTextW(_T("20"));
 
 	return TRUE;
 }
+
+
+
+void FrontDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
+{
+	if (main_tab_index != 1) return;
+	if (nHotKeyId == 0x125) {
+		MessageBox(L"ASD");
+	}
+	CDialogEx::OnHotKey(nHotKeyId, nKey1, nKey2);
+}
+
+
+
+
+
+
+
+
+
 
 static const IID IID_IFrontDlg =
 {0x19d11a9e,0x9882,0x4e17,{0x82,0xfc,0x81,0x1d,0xdd,0x5f,0xf3,0xd8}};

@@ -6,6 +6,7 @@
 #include "afxdialogex.h"
 #include "MainDlg.h"
 #include "iClickDlg.h"
+#include "FrontDlg.h"
 
 // MainDlg 对话框
 
@@ -42,9 +43,12 @@ BOOL MainDlg::OnInitDialog()
 	// 创建后台点击页
 	iClickDlg = new CiClickDlg();
 	iClickDlg->Create(IDD_ICLICK_DIALOG, &m_tabCtrl);
+	iClickDlg->main_tab_index = 0;
 
 	frontDlg = new FrontDlg();
 	frontDlg->Create(IDD_FRONTDLG, &m_tabCtrl);
+	frontDlg->main_tab_index = 0;
+
 
 	CRect rect;
 	GetClientRect(rect);
@@ -93,6 +97,8 @@ void MainDlg::OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	// TODO: 在此添加控件通知处理程序代码
 	tabIndex= m_tabCtrl.GetCurSel();
+	iClickDlg->main_tab_index = tabIndex;
+	frontDlg->main_tab_index = tabIndex;
 	switch (tabIndex) {
 	case 0:
 		iClickDlg->ShowWindow(SW_SHOW);
