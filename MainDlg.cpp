@@ -43,6 +43,9 @@ BOOL MainDlg::OnInitDialog()
 	iClickDlg = new CiClickDlg();
 	iClickDlg->Create(IDD_ICLICK_DIALOG, &m_tabCtrl);
 
+	frontDlg = new FrontDlg();
+	frontDlg->Create(IDD_FRONTDLG, &m_tabCtrl);
+
 	CRect rect;
 	GetClientRect(rect);
 	m_tabCtrl.MoveWindow(rect);
@@ -50,11 +53,13 @@ BOOL MainDlg::OnInitDialog()
 
 	rect.left-=2;
 	iClickDlg->MoveWindow(rect);
+	frontDlg->MoveWindow(rect);
 
 	// tap页设置第一页，
 	m_tabCtrl.SetCurSel(0);
 	// 显示第一个tab页内容
 	iClickDlg->ShowWindow(SW_SHOW);
+	frontDlg->ShowWindow(SW_HIDE);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -72,6 +77,7 @@ void MainDlg::DoDataExchange(CDataExchange* pDX)
 
 
 BEGIN_MESSAGE_MAP(MainDlg, CDialogEx)
+	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB1, &MainDlg::OnTcnSelchangeTab1)
 END_MESSAGE_MAP()
 
 
@@ -82,3 +88,23 @@ static const IID IID_IMainDlg =
 
 
 
+
+void MainDlg::OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	// TODO: 在此添加控件通知处理程序代码
+	tabIndex= m_tabCtrl.GetCurSel();
+	switch (tabIndex) {
+	case 0:
+		iClickDlg->ShowWindow(SW_SHOW);
+		frontDlg->ShowWindow(SW_HIDE);
+		break;
+	case 1:
+		iClickDlg->ShowWindow(SW_HIDE);
+		frontDlg->ShowWindow(SW_SHOW);
+		break;
+
+	default:
+		break;
+	}
+	*pResult = 0;
+}

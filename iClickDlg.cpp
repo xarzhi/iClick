@@ -317,6 +317,8 @@ int GetRand(int MIN, int MAX)//产生随机数
 	    return (int)(rand() * (MAX - MIN) / max + MIN);
 }
 
+
+
 // 多线程触发事件
 UINT MyThreadFunction(LPVOID pParam)
 {
@@ -326,7 +328,6 @@ UINT MyThreadFunction(LPVOID pParam)
 	while (Wnd->isClick) {
 		for (const auto& point : pointInfo) {
 			Sleep(point.gap);			// 延迟
-
 			if (point.event_type == 1) {
 				// 处理鼠标事件
 				UINT num = Wnd->Random_Radius;
@@ -361,7 +362,6 @@ UINT MyThreadFunction(LPVOID pParam)
 			else if (point.event_type == 2) {
 				// 处理键盘事件
 				::SetForegroundWindow(point.hwnd);  // 确保目标窗口在前台
-
 				// ******************* keybd_event *****************
 				// 按下修饰符键（如果有）
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
@@ -385,29 +385,7 @@ UINT MyThreadFunction(LPVOID pParam)
 				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
 					keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);  // 松开 Ctrl
 				}
-
 			
-				// ******************* SendMessage *****************
-			/*	if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
-					::SendMessage(point.hwnd, WM_KEYDOWN, VK_CONTROL, lParamDown);
-				}
-				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
-					::SendMessage(point.hwnd, WM_KEYDOWN, VK_SHIFT, lParamDown);
-				}
-				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
-					::SendMessage(point.hwnd, WM_KEYDOWN, VK_MENU, lParamDown);
-				}
-				::SendMessage(point.hwnd, WM_KEYDOWN, point.hotKeyInfo.wVirtualKey, lParamDown);
-				::SendMessage(point.hwnd, WM_KEYUP, point.hotKeyInfo.wVirtualKey, lParamUp);
-				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
-					::SendMessage(point.hwnd, WM_KEYUP, VK_MENU, lParamUp);
-				}
-				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
-					::SendMessage(point.hwnd, WM_KEYUP, VK_SHIFT, lParamUp);
-				}
-				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
-					::SendMessage(point.hwnd, WM_KEYUP, VK_CONTROL, lParamUp);
-				}*/
 			}
 
 			Sleep(Wnd->gap);			// 单次操作间隔

@@ -18,6 +18,8 @@
 #define IDD_DIALOG1                     152
 #define IDD_MAIN_DIALOG                 154
 #define IDD_GAP_DIALOG                  156
+#define IDD_DIALOG2                     158
+#define IDD_FRONTDLG                    158
 #define IDC_HOTKEY3                     1007
 #define IDC_BUTTON1                     1008
 #define IDC_EDIT2                       1009
@@ -58,7 +60,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        158
+#define _APS_NEXT_RESOURCE_VALUE        160
 #define _APS_NEXT_COMMAND_VALUE         32788
 #define _APS_NEXT_CONTROL_VALUE         1037
 #define _APS_NEXT_SYMED_VALUE           101

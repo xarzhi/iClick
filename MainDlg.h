@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "afxdialogex.h"
 #include "iClickDlg.h"
+#include "FrontDlg.h"
 
 // MainDlg 对话框
 
@@ -34,7 +35,11 @@ protected:
 	DECLARE_MESSAGE_MAP()
 
 	CiClickDlg* iClickDlg;
+	FrontDlg* frontDlg;
 public:
 	HICON m_hIcon;
 	CTabCtrl m_tabCtrl;
+	afx_msg void OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult);
+	int tabIndex = 0;
+
 };
