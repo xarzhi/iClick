@@ -5,7 +5,7 @@
 #include "iClick.h"
 #include "afxdialogex.h"
 #include "FrontDlg.h"
-
+#include <imm.h>
 
 // FrontDlg 对话框
 
@@ -43,12 +43,12 @@ BEGIN_MESSAGE_MAP(FrontDlg, CDialogEx)
 	ON_WM_HOTKEY()
 	ON_EN_CHANGE(IDC_HOTKEY1, &FrontDlg::OnHotKeyChanged)
 	ON_EN_CHANGE(IDC_EDIT1, &FrontDlg::OnEnChangeEdit1)
+
 END_MESSAGE_MAP()
 
 BOOL FrontDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
-
 
 	start_hotkey_ipt.SetHotKey(start_hotkey,NULL);
 	RegisterHotKey(m_hWnd, 0x125, NULL, VK_F8);
@@ -100,11 +100,20 @@ void FrontDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 // 快捷键内容改变
 void FrontDlg::OnHotKeyChanged()
 {
+
+	
 	WORD wVirtualKeyCode;
 	WORD wModifiers;
+	UINT mod = 0;
+
 	start_hotkey_ipt.GetHotKey(wVirtualKeyCode, wModifiers);
+
+	if (wModifiers & HOTKEYF_CONTROL) mod |= MOD_CONTROL;
+	if (wModifiers & HOTKEYF_SHIFT)   mod |= MOD_SHIFT;
+	if (wModifiers & HOTKEYF_ALT)     mod |= MOD_ALT;
+
 	UnregisterHotKey(m_hWnd, 0x125);
-	RegisterHotKey(m_hWnd, 0x125, wModifiers, wVirtualKeyCode);
+	RegisterHotKey(m_hWnd, 0x125, mod, wVirtualKeyCode);
 }
 
 
@@ -121,7 +130,20 @@ void FrontDlg::OnEnChangeEdit1()
 	gap = gapText;
 }
 
-
+void SetEnglishIME(HWND hWnd) {
+	HIMC hImc = ImmGetContext(hWnd); // 获取输入法上下文
+	if (hImc) {
+		DWORD dwConv, dwSent;
+		// 获取当前状态
+		ImmGetConversionStatus(hImc, &dwConv, &dwSent);
+		// 设置标志位：英文 + 半角
+		dwConv |= IME_CMODE_ALPHANUMERIC; // 英文模式
+		dwConv &= ~(IME_CMODE_FULLSHAPE | IME_CMODE_NATIVE); // 禁用全角/本地语言
+		// 应用新状态
+		ImmSetConversionStatus(hImc, dwConv, dwSent);
+		ImmReleaseContext(hWnd, hImc); // 释放上下文
+	}
+}
 
 
 

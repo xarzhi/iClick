@@ -38,7 +38,7 @@ BOOL MainDlg::OnInitDialog()
 	// 添加Tab标题
 	m_tabCtrl.InsertItem(0, _T("后台点击"));
 	m_tabCtrl.InsertItem(1, _T("前台点击"));
-	m_tabCtrl.InsertItem(2, _T("软件说明"));
+	//m_tabCtrl.InsertItem(2, _T("软件说明"));
 
 	// 创建后台点击页
 	iClickDlg = new CiClickDlg();
