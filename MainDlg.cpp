@@ -47,6 +47,8 @@ BOOL MainDlg::OnInitDialog()
 	GetClientRect(rect);
 	m_tabCtrl.MoveWindow(rect);
 	m_tabCtrl.AdjustRect(FALSE, rect); // FALSE 时在传入的矩形上剪切掉标签页区域
+
+	rect.left-=2;
 	iClickDlg->MoveWindow(rect);
 
 	// tap页设置第一页，
