@@ -324,13 +324,6 @@ UINT MyThreadFunction(LPVOID pParam)
 	UINT loop_times= Wnd->loop_times;
 	
 	while (Wnd->isClick) {
-		if (Wnd->loop_times != 0) {
-			if (loop_times == 0) {
-				Wnd->isClick = false;
-				Wnd->start_btn.SetWindowTextW(_T("开始点击"));
-				return 0;
-			};
-		}
 		for (const auto& point : pointInfo) {
 			Sleep(point.gap);			// 延迟
 
@@ -422,6 +415,11 @@ UINT MyThreadFunction(LPVOID pParam)
 		Sleep(Wnd->loop);				// 每一轮间隔
 		if (Wnd->loop_times != 0) {
 			loop_times--;
+			if (loop_times == 0) {
+				Wnd->isClick = false;
+				Wnd->start_btn.SetWindowTextW(_T("开始点击"));
+				return 0;
+			};
 		}
 	}
 	return 0; // 线程退出码
@@ -443,8 +441,8 @@ void CiClickDlg::OnBnClickedButton1()
 	else {
 		start_btn.SetWindowTextW(_T("停止点击"));
 		isClick = TRUE;
+		AfxBeginThread(MyThreadFunction, this);
 	}
-	AfxBeginThread(MyThreadFunction, this);
 }
 
 
@@ -553,8 +551,8 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		else {
 			start_btn.SetWindowTextW(_T("停止点击"));
 			isClick = TRUE;
+			AfxBeginThread(MyThreadFunction, this);
 		}
-		AfxBeginThread(MyThreadFunction, this);
 	}
 	
 	CDialogEx::OnHotKey(nHotKeyId, nKey1, nKey2);
