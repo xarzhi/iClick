@@ -22,44 +22,6 @@ vector<PointInfo> pointInfo;
 #endif
 
 
-// 用于应用程序“关于”菜单项的 CAboutDlg 对话框
-
-
-class CAboutDlg : public CDialogEx
-{
-public:
-	CAboutDlg();
-
-// 对话框数据
-#ifdef AFX_DESIGN_TIME
-	enum { IDD = IDD_ABOUTBOX };
-#endif
-
-	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
-
-// 实现
-protected:
-	DECLARE_MESSAGE_MAP()
-public:
-};
-
-CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
-{
-}
-
-void CAboutDlg::DoDataExchange(CDataExchange* pDX)
-{
-	CDialogEx::DoDataExchange(pDX);
-}
-
-BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
-END_MESSAGE_MAP()
-
-
-// CiClickDlg 对话框
-
-
 
 CiClickDlg::CiClickDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_ICLICK_DIALOG, pParent)
@@ -231,8 +193,7 @@ void CiClickDlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
 	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
 	{
-		CAboutDlg dlgAbout;
-		dlgAbout.DoModal();
+		
 	}
 	else
 	{
