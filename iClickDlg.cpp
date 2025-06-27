@@ -288,6 +288,7 @@ UINT MyThreadFunction(LPVOID pParam)
 	
 	while (Wnd->isClick) {
 		for (const auto& point : pointInfo) {
+			if (!::IsWindow(point.hwnd)) continue;
 			Sleep(point.gap);			// 延迟
 			if (point.event_type == 1) {
 				// 处理鼠标事件
