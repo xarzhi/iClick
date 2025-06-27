@@ -311,10 +311,7 @@ UINT MyThreadFunction(LPVOID pParam)
 					 // 第一次点击
 					::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
 					::SendMessage(point.hwnd, WM_LBUTTONUP, 0, MAKELPARAM(x, y));
-					// 短暂延迟（模拟用户双击速度）
-					Sleep(GetDoubleClickTime() / 2);
 					// 第二次点击（双击）
-					::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
 					::SendMessage(point.hwnd, WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(x, y));
 					::SendMessage(point.hwnd, WM_LBUTTONUP, 0, MAKELPARAM(x, y));
 				}
