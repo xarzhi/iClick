@@ -116,6 +116,10 @@ public:
 	afx_msg void OpenGapModal();
 	afx_msg void OpenGapDialog1();
 	int main_tab_index;
-
+	BOOL m_bTracking = FALSE;
+	BOOL isFrontOpt = FALSE;
+	CButton isfront_check;
+	afx_msg void OnBnClickedCheck5();
+	afx_msg void OnEnChangeEdit6();
 };
 

@@ -47,6 +47,7 @@ void CiClickDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_STATIC_PIC, pic_box);
 	DDX_Control(pDX, IDC_CHECK4, hide_check);
 	DDX_Control(pDX, IDC_EDIT6, loop_edit);
+	DDX_Control(pDX, IDC_CHECK5, isfront_check);
 }
 
 BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
@@ -86,6 +87,8 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_COMMAND(ID_32785, &CiClickDlg::OpenKeySelectDlg)
 	ON_COMMAND(ID_32787, &CiClickDlg::OpenGapModal)
 	ON_COMMAND(ID_32786, &CiClickDlg::OpenGapDialog1)
+	ON_BN_CLICKED(IDC_CHECK5, &CiClickDlg::OnBnClickedCheck5)
+	ON_EN_CHANGE(IDC_EDIT6, &CiClickDlg::OnEnChangeEdit6)
 END_MESSAGE_MAP()
 
 
@@ -170,7 +173,7 @@ BOOL CiClickDlg::OnInitDialog()
 	((CButton*)GetDlgItem(IDC_RADIO3))->SetCheck(TRUE); //选上
 	((CButton*)GetDlgItem(IDC_RADIO4))->SetCheck(FALSE);//不选上
 
-	//// 给图片空间设置位图
+	// 给图片空间设置位图
 	CBitmap m_bmp;
 	m_bmp.LoadBitmap(IDB_BITMAP1);
 	CStatic* pPic = (CStatic*)GetDlgItem(IDC_STATIC_PIC);
@@ -178,8 +181,10 @@ BOOL CiClickDlg::OnInitDialog()
 	pPic->SetBitmap(m_bmp);
 	m_bmp.Detach(); // 关键！防止bmp析构时删除位图
 
+	// 初始化是否前台点击，默认后台点击
+	isfront_check.SetCheck(isFrontOpt);
 
-
+	// 初始化循环次数，0代表无限循环
 	loop_edit.SetWindowTextW(_T("0"));
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -278,10 +283,105 @@ int GetRand(int MIN, int MAX)//产生随机数
 	    return (int)(rand() * (MAX - MIN) / max + MIN);
 }
 
+long PixelToAbsolute(int pos, bool isX) {
+	int screenRes = isX ? GetSystemMetrics(SM_CXSCREEN) : GetSystemMetrics(SM_CYSCREEN);
+	return static_cast<long>((pos * 65535) / (screenRes - 1));
+}
 
 
-// 多线程触发事件
-UINT MyThreadFunction(LPVOID pParam)
+void SendLeftClick() {
+	INPUT inputs[2] = {};
+	inputs[0].type = INPUT_MOUSE;
+	inputs[0].mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_LEFTDOWN;
+
+	inputs[1].type = INPUT_MOUSE;
+	inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+
+	SendInput(2, inputs, sizeof(INPUT));
+}
+
+
+// 前台事件多线程
+UINT FrontThreadOption(LPVOID pParam) {
+	CiClickDlg* Wnd = (CiClickDlg*)pParam;
+	UINT loop_times = Wnd->loop_times;
+
+	while (Wnd->isClick) {
+		for (const auto& point : pointInfo) {
+			if (!::IsWindow(point.hwnd)) continue;
+			::SetForegroundWindow(point.hwnd);  // 确保目标窗口在前台
+
+			Sleep(point.gap);			// 延迟
+
+			CPoint ptCursor = {point.x,point.y};
+			::ClientToScreen(point.hwnd, &ptCursor);
+
+
+			UINT Radius = Wnd->Random_Radius;
+			int x, y;
+			if (Wnd->isRandomClick) {
+				x = GetRand(ptCursor.x - Radius, ptCursor.x + Radius);
+				y = GetRand(ptCursor.y - Radius, ptCursor.y + Radius);
+			}
+			else {
+				x = ptCursor.x;
+				y = ptCursor.y;
+			}
+
+
+			SetCursorPos(x, y);
+
+			if (point.event_type == 1) {		// 鼠标事件
+				if (point.moust_key == 1) {// 单击
+					SendLeftClick();
+				}
+				else if (point.moust_key == 2) {	// 双击
+					SendLeftClick();
+					Sleep(100);					// 模拟双击间隔
+					SendLeftClick();
+				}
+			}
+			else if (point.event_type == 2) {			// 键盘事件
+				std::vector<INPUT> inputs;
+				DWORD modifiers = point.hotKeyInfo.wModifiers;
+
+				// 1. 按下修饰键（如果存在）
+				if (modifiers & HOTKEYF_CONTROL) inputs.push_back({ INPUT_KEYBOARD, { VK_CONTROL } });
+				if (modifiers & HOTKEYF_SHIFT) inputs.push_back({ INPUT_KEYBOARD, { VK_SHIFT } });
+				if (modifiers & HOTKEYF_ALT) inputs.push_back({ INPUT_KEYBOARD, { VK_MENU } });
+
+				// 2. 按下主键
+				inputs.push_back({ INPUT_KEYBOARD, { point.hotKeyInfo.wVirtualKey } });
+				// 3. 释放主键
+				inputs.push_back({ INPUT_KEYBOARD, { point.hotKeyInfo.wVirtualKey,KEYEVENTF_KEYUP } });
+
+				// 4. 释放修饰键（逆序）
+				if (modifiers & HOTKEYF_ALT) inputs.push_back({ INPUT_KEYBOARD, { VK_MENU ,KEYEVENTF_KEYUP} });
+				if (modifiers & HOTKEYF_SHIFT) inputs.push_back({ INPUT_KEYBOARD, { VK_SHIFT ,KEYEVENTF_KEYUP} });
+				if (modifiers & HOTKEYF_CONTROL) inputs.push_back({ INPUT_KEYBOARD, { VK_CONTROL ,KEYEVENTF_KEYUP} });
+
+				SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT));
+			
+			}
+			Sleep(Wnd->gap);			// 单次操作间隔
+		}
+		Sleep(Wnd->loop);				// 每一轮间隔
+		if (Wnd->loop_times != 0) {
+			loop_times--;
+			if (loop_times == 0) {
+				Wnd->isClick = false;
+				Wnd->start_btn.SetWindowTextW(_T("开始点击"));
+				return 0;
+			};
+		}
+
+	}
+
+	return 0;
+}
+
+// 后台事件多线程
+UINT BackThreadOption(LPVOID pParam)
 {
 	CiClickDlg* Wnd = (CiClickDlg*)pParam;
 	UINT loop_times= Wnd->loop_times;
@@ -292,11 +392,11 @@ UINT MyThreadFunction(LPVOID pParam)
 			Sleep(point.gap);			// 延迟
 			if (point.event_type == 1) {
 				// 处理鼠标事件
-				UINT num = Wnd->Random_Radius;
+				UINT Radius = Wnd->Random_Radius;
 				int x, y;
 				if (Wnd->isRandomClick) {
-					x = GetRand(point.x - num, point.x + num);
-					y = GetRand(point.y - num, point.y + num);
+					x = GetRand(point.x - Radius, point.x + Radius);
+					y = GetRand(point.y - Radius, point.y + Radius);
 				}
 				else {
 					x = point.x;
@@ -321,32 +421,23 @@ UINT MyThreadFunction(LPVOID pParam)
 			else if (point.event_type == 2) {
 				// 处理键盘事件
 				::SetForegroundWindow(point.hwnd);  // 确保目标窗口在前台
-				// ******************* keybd_event *****************
+				DWORD modifiers = point.hotKeyInfo.wModifiers;
+				DWORD virtualKey = point.hotKeyInfo.wVirtualKey;
+
 				// 按下修饰符键（如果有）
-				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
-					keybd_event(VK_CONTROL, 0, 0, 0);        // 按下 Ctrl
-				}
-				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
-					keybd_event(VK_SHIFT, 0, 0, 0);        // 按下 Shift
-				}
-				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
-					keybd_event(VK_MENU, 0, 0, 0);        // 按下 ALT
-				}
-				keybd_event(point.hotKeyInfo.wVirtualKey, 0, 0, 0);             
-				keybd_event(point.hotKeyInfo.wVirtualKey, 0, KEYEVENTF_KEYUP, 0); 
+				if (modifiers & HOTKEYF_CONTROL) keybd_event(VK_CONTROL, 0, 0, 0);		// 按下 Ctrl
+				if (modifiers & HOTKEYF_SHIFT) keybd_event(VK_SHIFT, 0, 0, 0);        // 按下 Shift
+				if (modifiers & HOTKEYF_ALT) keybd_event(VK_MENU, 0, 0, 0);        // 按下 ALT
 
-				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) {
-					keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);   // 松开 ALT
-				}
-				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) {
-					keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);  // 松开 SHIFT
-				}
-				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) {
-					keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);  // 松开 Ctrl
-				}
-			
+				/*keybd_event(virtualKey, 0, 0, 0);
+				keybd_event(virtualKey, 0, KEYEVENTF_KEYUP, 0);*/
+				keybd_event('I', MapVirtualKey('I', 0), 0, 0);
+				keybd_event('I', MapVirtualKey('I', 0), KEYEVENTF_KEYUP, 0);
+
+				if (modifiers & HOTKEYF_ALT) keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);   // 松开 ALT
+				if (modifiers & HOTKEYF_SHIFT) keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);  // 松开 SHIFT
+				if (modifiers & HOTKEYF_CONTROL) keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);  // 松开 Ctrl
 			}
-
 			Sleep(Wnd->gap);			// 单次操作间隔
 		}
 		Sleep(Wnd->loop);				// 每一轮间隔
@@ -369,7 +460,6 @@ void CiClickDlg::OnBnClickedButton1()
 		MessageBox(_T("请添加坐标信息"));
 		return;
 	}
-	loop_times = GetDlgItemInt(IDC_EDIT6, NULL, FALSE);
 	
 	if (isClick == TRUE) { 
 		start_btn.SetWindowTextW(_T("开始点击"));
@@ -378,7 +468,12 @@ void CiClickDlg::OnBnClickedButton1()
 	else {
 		start_btn.SetWindowTextW(_T("停止点击"));
 		isClick = TRUE;
-		AfxBeginThread(MyThreadFunction, this);
+		if (isFrontOpt ==  TRUE) {
+			AfxBeginThread(FrontThreadOption, this);
+		}
+		else {
+			AfxBeginThread(BackThreadOption, this);
+		}
 	}
 }
 
@@ -489,7 +584,12 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		else {
 			start_btn.SetWindowTextW(_T("停止点击"));
 			isClick = TRUE;
-			AfxBeginThread(MyThreadFunction, this);
+			if (isFrontOpt == TRUE) {
+				AfxBeginThread(FrontThreadOption, this);
+			}
+			else {
+				AfxBeginThread(BackThreadOption, this);
+			}
 		}
 	}
 	
@@ -712,7 +812,6 @@ void CiClickDlg::OnMouseMove(UINT nFlags, CPoint point)
 		GetCursorPos(&ptCursor);//获取鼠标位置
 		CWnd* hWnd = WindowFromPoint(ptCursor); // 获取窗口句柄
 
-
 		// 窗口标题
 		CString str;
 		hWnd->GetWindowTextW(str);
@@ -814,4 +913,15 @@ void CiClickDlg::OpenGapDialog1()
 		str.Format(_T("%d"), gapModal.gap);
 		list.SetItemText(select_row, 5, str);
 	}
+}
+
+void CiClickDlg::OnBnClickedCheck5()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	isFrontOpt = isfront_check.GetCheck();
+}
+
+void CiClickDlg::OnEnChangeEdit6()
+{
+	loop_times = GetDlgItemInt(IDC_EDIT6, NULL, FALSE);
 }

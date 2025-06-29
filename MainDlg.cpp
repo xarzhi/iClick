@@ -36,8 +36,8 @@ BOOL MainDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 	// 添加Tab标题
-	m_tabCtrl.InsertItem(0, _T("后台点击"));
-	m_tabCtrl.InsertItem(1, _T("前台点击"));
+	m_tabCtrl.InsertItem(0, _T("操作一"));
+	m_tabCtrl.InsertItem(1, _T("操作二"));
 	//m_tabCtrl.InsertItem(2, _T("软件说明"));
 
 	// 创建后台点击页
