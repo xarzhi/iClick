@@ -342,25 +342,48 @@ UINT FrontThreadOption(LPVOID pParam) {
 				}
 			}
 			else if (point.event_type == 2) {			// 键盘事件
-				std::vector<INPUT> inputs;
+				std::vector<INPUT> inputs1;
+				std::vector<INPUT> inputs2;
+
+
 				DWORD modifiers = point.hotKeyInfo.wModifiers;
 
 				// 1. 按下修饰键（如果存在）
-				if (modifiers & HOTKEYF_CONTROL) inputs.push_back({ INPUT_KEYBOARD, { VK_CONTROL } });
-				if (modifiers & HOTKEYF_SHIFT) inputs.push_back({ INPUT_KEYBOARD, { VK_SHIFT } });
-				if (modifiers & HOTKEYF_ALT) inputs.push_back({ INPUT_KEYBOARD, { VK_MENU } });
-
+				if (modifiers & HOTKEYF_CONTROL) inputs1.push_back({ INPUT_KEYBOARD, { VK_CONTROL } });
+				if (modifiers & HOTKEYF_SHIFT) inputs1.push_back({ INPUT_KEYBOARD, { VK_SHIFT } });
+				if (modifiers & HOTKEYF_ALT) inputs1.push_back({ INPUT_KEYBOARD, { VK_MENU } });
 				// 2. 按下主键
-				inputs.push_back({ INPUT_KEYBOARD, { point.hotKeyInfo.wVirtualKey } });
-				// 3. 释放主键
-				inputs.push_back({ INPUT_KEYBOARD, { point.hotKeyInfo.wVirtualKey,KEYEVENTF_KEYUP } });
+				INPUT down;
+				down.type = INPUT_KEYBOARD;
+				down.ki.wVk = point.hotKeyInfo.wVirtualKey;
+				down.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
+				down.ki.dwFlags = 0;  // 按键按下
+				inputs2.push_back(down);
 
-				// 4. 释放修饰键（逆序）
-				if (modifiers & HOTKEYF_ALT) inputs.push_back({ INPUT_KEYBOARD, { VK_MENU ,KEYEVENTF_KEYUP} });
-				if (modifiers & HOTKEYF_SHIFT) inputs.push_back({ INPUT_KEYBOARD, { VK_SHIFT ,KEYEVENTF_KEYUP} });
-				if (modifiers & HOTKEYF_CONTROL) inputs.push_back({ INPUT_KEYBOARD, { VK_CONTROL ,KEYEVENTF_KEYUP} });
 
-				SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT));
+				INPUT up;
+				up.type = INPUT_KEYBOARD;
+				up.ki.wVk = point.hotKeyInfo.wVirtualKey;
+				up.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
+				up.ki.dwFlags = KEYEVENTF_KEYUP;  // 按键按下
+				inputs2.push_back(up);
+
+				if (modifiers & HOTKEYF_ALT) inputs2.push_back({ INPUT_KEYBOARD, { VK_MENU ,KEYEVENTF_KEYUP} });
+				if (modifiers & HOTKEYF_SHIFT) inputs2.push_back({ INPUT_KEYBOARD, { VK_SHIFT ,KEYEVENTF_KEYUP} });
+				if (modifiers & HOTKEYF_CONTROL) inputs2.push_back({ INPUT_KEYBOARD, { VK_CONTROL ,KEYEVENTF_KEYUP} });
+
+				SendInput(static_cast<UINT>(inputs1.size()), inputs1.data(), sizeof(INPUT));
+				Sleep(8);
+				SendInput(static_cast<UINT>(inputs2.size()), inputs2.data(), sizeof(INPUT));
+
+				//inputs1.push_back({ INPUT_KEYBOARD, { point.hotKeyInfo.wVirtualKey, MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC) } });
+				//inputs2.push_back({ INPUT_KEYBOARD, { point.hotKeyInfo.wVirtualKey,KEYEVENTF_KEYUP ,MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC)} });
+
+				
+				
+				/*SendInput(static_cast<UINT>(inputs1.size()), inputs1.data(), sizeof(INPUT));
+				Sleep(8);
+				SendInput(static_cast<UINT>(inputs2.size()), inputs2.data(), sizeof(INPUT));*/
 			
 			}
 			Sleep(Wnd->gap);			// 单次操作间隔
@@ -429,10 +452,9 @@ UINT BackThreadOption(LPVOID pParam)
 				if (modifiers & HOTKEYF_SHIFT) keybd_event(VK_SHIFT, 0, 0, 0);        // 按下 Shift
 				if (modifiers & HOTKEYF_ALT) keybd_event(VK_MENU, 0, 0, 0);        // 按下 ALT
 
-				/*keybd_event(virtualKey, 0, 0, 0);
-				keybd_event(virtualKey, 0, KEYEVENTF_KEYUP, 0);*/
-				keybd_event('I', MapVirtualKey('I', 0), 0, 0);
-				keybd_event('I', MapVirtualKey('I', 0), KEYEVENTF_KEYUP, 0);
+				keybd_event(virtualKey, MapVirtualKey(virtualKey, 0), 0, 0);
+				Sleep(8);
+				keybd_event(virtualKey, MapVirtualKey(virtualKey, 0), KEYEVENTF_KEYUP, 0);
 
 				if (modifiers & HOTKEYF_ALT) keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);   // 松开 ALT
 				if (modifiers & HOTKEYF_SHIFT) keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);  // 松开 SHIFT
