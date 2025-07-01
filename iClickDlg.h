@@ -41,6 +41,14 @@ public:
 		if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_ESCAPE) {
 			return TRUE;
 		}
+		if (pMsg->message == WM_MOUSEMOVE || pMsg->message == WM_LBUTTONDOWN) {
+			loop_time_tip.RelayEvent(pMsg);
+			front_tip.RelayEvent(pMsg);
+			random_tip.RelayEvent(pMsg);
+			random_ipt_tip.RelayEvent(pMsg);
+			gap_tip.RelayEvent(pMsg);
+			loop_gap_tip.RelayEvent(pMsg);
+		}
 		return CDialogEx::PreTranslateMessage(pMsg);
 	}
 
@@ -121,5 +129,13 @@ public:
 	CButton isfront_check;
 	afx_msg void OnBnClickedCheck5();
 	afx_msg void OnEnChangeEdit6();
+	void CreateTip(CToolTipCtrl &tipCtrl,WORD ID, CString text);
+	CToolTipCtrl loop_time_tip;
+	CToolTipCtrl front_tip;
+	CToolTipCtrl random_tip;
+	CToolTipCtrl random_ipt_tip;
+	CToolTipCtrl gap_tip;
+	CToolTipCtrl loop_gap_tip;
+
 };
 

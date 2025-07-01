@@ -36,6 +36,7 @@ void FrontDlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_HOTKEY1, start_hotkey_ipt);
 	DDX_Control(pDX, IDC_EDIT1, gap_ipt);
+	DDX_Control(pDX, IDC_EDIT2, loop_ipt);
 }
 
 
@@ -44,6 +45,7 @@ BEGIN_MESSAGE_MAP(FrontDlg, CDialogEx)
 	ON_EN_CHANGE(IDC_HOTKEY1, &FrontDlg::OnHotKeyChanged)
 	ON_EN_CHANGE(IDC_EDIT1, &FrontDlg::OnEnChangeEdit1)
 
+	ON_EN_CHANGE(IDC_EDIT2, &FrontDlg::OnEnChangeEdit2)
 END_MESSAGE_MAP()
 
 BOOL FrontDlg::OnInitDialog()
@@ -54,6 +56,8 @@ BOOL FrontDlg::OnInitDialog()
 	RegisterHotKey(m_hWnd, 0x125, NULL, VK_F8);
 
 	gap_ipt.SetWindowTextW(_T("20"));
+	loop_ipt.SetWindowTextW(_T("0"));
+
 
 	return TRUE;
 }
@@ -71,10 +75,18 @@ UINT FrontClickThread(LPVOID pParam)
 
 	inputs[1].type = INPUT_MOUSE;
 	inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;    // 左键释放
+	UINT loop_times = Wnd->loop_times;
 
 	while (Wnd->isClick) {
 		SendInput(2, inputs, sizeof(INPUT));
 		Sleep(Wnd->gap);
+		if (Wnd->loop_times != 0) {
+			loop_times--;
+			if (loop_times == 0) {
+				Wnd->isClick = false;
+				return 0;
+			};
+		}
 	}
 	return 0;
 }
@@ -154,3 +166,10 @@ static const IID IID_IFrontDlg =
 
 
 
+
+void FrontDlg::OnEnChangeEdit2()
+{
+	CString num;
+	loop_ipt.GetWindowText(num);
+	loop_times = (UINT)_ttoi(num);
+}

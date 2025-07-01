@@ -187,10 +187,27 @@ BOOL CiClickDlg::OnInitDialog()
 	// 初始化循环次数，0代表无限循环
 	loop_edit.SetWindowTextW(_T("0"));
 
+	EnableToolTips(TRUE);
+
+	// 添加提示框
+	CreateTip(loop_time_tip, IDC_EDIT6, _T("整个列表中的操作会重复相应的次数，自动停止，0为无限重复"));
+	CreateTip(front_tip, IDC_CHECK5, _T("前台操作会占用鼠标键盘"));
+	CreateTip(random_tip, IDC_CHECK1, _T("是否开始模糊点击"));
+	CreateTip(random_ipt_tip, IDC_EDIT1, _T("以目标点为中心，半径为此值的范围内随机点击"));
+	CreateTip(gap_tip, IDC_EDIT2, _T("每次操作后的间隔"));
+	CreateTip(loop_gap_tip, IDC_EDIT5, _T("整个列表的操作执行一边后的间隔"));
+
+
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
 
+
+void CiClickDlg::CreateTip(CToolTipCtrl &tipCtrl, WORD ID, CString text) {
+	tipCtrl.Create(this);
+	tipCtrl.AddTool(GetDlgItem(ID), text); // 关联控件及提示文本
+	tipCtrl.Activate(TRUE);
+}
 
 
 
@@ -357,7 +374,7 @@ UINT FrontThreadOption(LPVOID pParam) {
 				down.type = INPUT_KEYBOARD;
 				down.ki.wVk = point.hotKeyInfo.wVirtualKey;
 				down.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
-				down.ki.dwFlags = 0;  // 按键按下
+				down.ki.dwFlags = KEYEVENTF_SCANCODE;  // 按键按下
 				inputs2.push_back(down);
 
 
@@ -365,7 +382,7 @@ UINT FrontThreadOption(LPVOID pParam) {
 				up.type = INPUT_KEYBOARD;
 				up.ki.wVk = point.hotKeyInfo.wVirtualKey;
 				up.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
-				up.ki.dwFlags = KEYEVENTF_KEYUP;  // 按键按下
+				up.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;  // 按键按下
 				inputs2.push_back(up);
 
 				if (modifiers & HOTKEYF_ALT) inputs2.push_back({ INPUT_KEYBOARD, { VK_MENU ,KEYEVENTF_KEYUP} });
@@ -376,15 +393,6 @@ UINT FrontThreadOption(LPVOID pParam) {
 				Sleep(8);
 				SendInput(static_cast<UINT>(inputs2.size()), inputs2.data(), sizeof(INPUT));
 
-				//inputs1.push_back({ INPUT_KEYBOARD, { point.hotKeyInfo.wVirtualKey, MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC) } });
-				//inputs2.push_back({ INPUT_KEYBOARD, { point.hotKeyInfo.wVirtualKey,KEYEVENTF_KEYUP ,MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC)} });
-
-				
-				
-				/*SendInput(static_cast<UINT>(inputs1.size()), inputs1.data(), sizeof(INPUT));
-				Sleep(8);
-				SendInput(static_cast<UINT>(inputs2.size()), inputs2.data(), sizeof(INPUT));*/
-			
 			}
 			Sleep(Wnd->gap);			// 单次操作间隔
 		}

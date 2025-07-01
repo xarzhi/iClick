@@ -42,4 +42,7 @@ public:
 	afx_msg void OnHotKeyChanged();
 	BOOL isClick = FALSE;
 	afx_msg void OnEnChangeEdit1();
+	UINT loop_times = 0;
+	afx_msg void OnEnChangeEdit2();
+	CEdit loop_ipt;
 };
