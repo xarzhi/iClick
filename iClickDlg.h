@@ -16,8 +16,8 @@ typedef struct PointInfo {
 	int x = 0;
 	int y = 0;
 	HWND hwnd = NULL;
-	int event_type = 1;			// 事件类型        1：鼠标事件   2：键盘事件
-	int moust_key = 1;			// 鼠标点击类型    1:单机    2：双击
+	int event_type = 1;	// 事件类型        1：鼠标事件   2：键盘事件
+	int moust_key = 1;	// 鼠标点击类型    1: 左键单机   2：左键双击  3：滚轮上滚  4：滚轮下滚 5：滚轮单击 6：右键单击 7：右键双击
 	UINT gap = 20;
 	HotKeyInfo hotKeyInfo;
 }PointInfo;
@@ -87,6 +87,7 @@ public:
 	CButton start_btn;
 	CEdit gap_ipt;
 	UINT watch_hotkey = VK_F6;
+	UINT keybd_hotkey = VK_F7;
 	afx_msg void OnEnChangeEdit5();
 	CEdit loop_ipt;
 	CEdit blurry_ipt;
@@ -137,5 +138,13 @@ public:
 	CToolTipCtrl gap_tip;
 	CToolTipCtrl loop_gap_tip;
 
+	CHotKeyCtrl keybd_hotkey_ipt;
+	afx_msg void ChangeToKeyBd();
+	afx_msg void ChangeToMouse();
+	afx_msg void ChangeToMidUp();
+	afx_msg void ChangeToMidDown();
+	afx_msg void ChangeToMidClick();
+	afx_msg void ChangeToRightClick();
+	afx_msg void ChangeToRightDbClick();
 };
 

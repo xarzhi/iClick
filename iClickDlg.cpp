@@ -48,6 +48,7 @@ void CiClickDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_CHECK4, hide_check);
 	DDX_Control(pDX, IDC_EDIT6, loop_edit);
 	DDX_Control(pDX, IDC_CHECK5, isfront_check);
+	DDX_Control(pDX, IDC_HOTKEY2, keybd_hotkey_ipt);
 }
 
 BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
@@ -89,6 +90,13 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_COMMAND(ID_32786, &CiClickDlg::OpenGapDialog1)
 	ON_BN_CLICKED(IDC_CHECK5, &CiClickDlg::OnBnClickedCheck5)
 	ON_EN_CHANGE(IDC_EDIT6, &CiClickDlg::OnEnChangeEdit6)
+	ON_COMMAND(ID_32788, &CiClickDlg::ChangeToKeyBd)
+	ON_COMMAND(ID_32794, &CiClickDlg::ChangeToMouse)
+	ON_COMMAND(ID_32789, &CiClickDlg::ChangeToMidUp)
+	ON_COMMAND(ID_32790, &CiClickDlg::ChangeToMidDown)
+	ON_COMMAND(ID_32793, &CiClickDlg::ChangeToMidClick)
+	ON_COMMAND(ID_32791, &CiClickDlg::ChangeToRightClick)
+	ON_COMMAND(ID_32792, &CiClickDlg::ChangeToRightDbClick)
 END_MESSAGE_MAP()
 
 
@@ -157,8 +165,10 @@ BOOL CiClickDlg::OnInitDialog()
 
 	//注册热键 F6
 	hotkey1.SetHotKey(watch_hotkey, NULL);
-	start_hotkey.SetHotKey(VK_F7,NULL);
-	RegisterHotKey(m_hWnd, 0x124, NULL, VK_F7);
+	keybd_hotkey_ipt.SetHotKey(keybd_hotkey, NULL);
+	
+	start_hotkey.SetHotKey(VK_F8,NULL);
+	RegisterHotKey(m_hWnd, 0x124, NULL, VK_F8);
 
 
 	random_check.SetCheck(isRandomClick);
@@ -281,9 +291,15 @@ void CiClickDlg::OnBnClickedCheck2()
 		WORD wModifiers;
 		hotkey1.GetHotKey(wVirtualKeyCode, wModifiers);
 		RegisterHotKey(m_hWnd, 0x123, wModifiers, wVirtualKeyCode);
+
+		WORD wVirtualKeyCode1;
+		WORD wModifiers1;
+		keybd_hotkey_ipt.GetHotKey(wVirtualKeyCode1, wModifiers1);
+		RegisterHotKey(m_hWnd, 0x126, wModifiers1, wVirtualKeyCode1);
 	}
 	else {
 		 UnregisterHotKey(m_hWnd, 0x123);
+		 UnregisterHotKey(m_hWnd, 0x126);
 	}
 	start_watch = start_Watch_Check.GetCheck();
 }
@@ -317,6 +333,17 @@ void SendLeftClick() {
 	SendInput(2, inputs, sizeof(INPUT));
 }
 
+void RightClick() {
+	INPUT inputs[2] = { 0 };
+	// 右键按下
+	inputs[0].type = INPUT_MOUSE;
+	inputs[0].mi.dwFlags = MOUSEEVENTF_RIGHTDOWN;
+	// 右键释放
+	inputs[1].type = INPUT_MOUSE;
+	inputs[1].mi.dwFlags = MOUSEEVENTF_RIGHTUP;
+	SendInput(2, inputs, sizeof(INPUT));
+}
+
 
 // 前台事件多线程
 UINT FrontThreadOption(LPVOID pParam) {
@@ -333,7 +360,7 @@ UINT FrontThreadOption(LPVOID pParam) {
 			CPoint ptCursor = {point.x,point.y};
 			::ClientToScreen(point.hwnd, &ptCursor);
 
-
+			// 设置模糊点击
 			UINT Radius = Wnd->Random_Radius;
 			int x, y;
 			if (Wnd->isRandomClick) {
@@ -344,8 +371,7 @@ UINT FrontThreadOption(LPVOID pParam) {
 				x = ptCursor.x;
 				y = ptCursor.y;
 			}
-
-
+			// 设置鼠标位置
 			SetCursorPos(x, y);
 
 			if (point.event_type == 1) {		// 鼠标事件
@@ -356,6 +382,38 @@ UINT FrontThreadOption(LPVOID pParam) {
 					SendLeftClick();
 					Sleep(100);					// 模拟双击间隔
 					SendLeftClick();
+				}
+				else if (point.moust_key == 3) {	// 滚轮上滑
+					INPUT input = { 0 };
+					input.type = INPUT_MOUSE;
+					input.mi.dwFlags = MOUSEEVENTF_WHEEL;
+					input.mi.mouseData = 120; // 正值表示向上滚动
+					SendInput(1, &input, sizeof(INPUT));
+				}
+				else if (point.moust_key == 4) {// 滚轮下滑
+					INPUT input = { 0 };
+					input.type = INPUT_MOUSE;
+					input.mi.dwFlags = MOUSEEVENTF_WHEEL;
+					input.mi.mouseData = -120; // 正值表示向上滚动
+					SendInput(1, &input, sizeof(INPUT));
+				}
+				else if (point.moust_key == 5) {// 滚轮点击
+					INPUT inputs[2] = { 0 };
+					// 中键按下
+					inputs[0].type = INPUT_MOUSE;
+					inputs[0].mi.dwFlags = MOUSEEVENTF_MIDDLEDOWN;
+					// 中键释放
+					inputs[1].type = INPUT_MOUSE;
+					inputs[1].mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
+					SendInput(2, inputs, sizeof(INPUT));
+				}
+				else if (point.moust_key == 6) {// 右键单击
+					RightClick();       
+				}
+				else if (point.moust_key == 7) {// 右键双击
+					RightClick();       // 第一次单击
+					Sleep(100);    // 间隔 100ms（系统默认双击间隔为 500ms）
+					RightClick();       // 第二次单击
 				}
 			}
 			else if (point.event_type == 2) {			// 键盘事件
@@ -401,7 +459,7 @@ UINT FrontThreadOption(LPVOID pParam) {
 			loop_times--;
 			if (loop_times == 0) {
 				Wnd->isClick = false;
-				Wnd->start_btn.SetWindowTextW(_T("开始点击"));
+				Wnd->start_btn.SetWindowTextW(_T("开始"));
 				return 0;
 			};
 		}
@@ -434,7 +492,7 @@ UINT BackThreadOption(LPVOID pParam)
 					y = point.y;
 				}
 				if (point.moust_key == 1) {
-					// 单机
+					// 单击
 					::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
 					::SendMessage(point.hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
 				}
@@ -446,6 +504,34 @@ UINT BackThreadOption(LPVOID pParam)
 					// 第二次点击（双击）
 					::SendMessage(point.hwnd, WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(x, y));
 					::SendMessage(point.hwnd, WM_LBUTTONUP, 0, MAKELPARAM(x, y));
+				}
+				else if (point.moust_key == 3) {
+					// 滚轮上滚
+					UINT distance = 120;		// 滚动距离
+					::SendMessage(point.hwnd, WM_MOUSEWHEEL, MAKEWPARAM(0, distance), MAKELPARAM(x, y));
+				}
+				else if (point.moust_key == 4) {
+					// 滚轮下滚
+					UINT distance = 120;		// 滚动距离
+					::SendMessage(point.hwnd, WM_MOUSEWHEEL, MAKEWPARAM(0, distance * -1), MAKELPARAM(x, y));
+				}
+				else if (point.moust_key == 5) {
+					// 滚轮点击
+					::SendMessage(point.hwnd, WM_MBUTTONDOWN, 0, MAKELPARAM(x, y));
+					::SendMessage(point.hwnd, WM_MBUTTONUP, 0, MAKELPARAM(x, y));
+				}
+				else if (point.moust_key == 6) {
+					// 右键单击
+					::SendMessage(point.hwnd, WM_RBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+					::SendMessage(point.hwnd, WM_RBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
+				}
+				else if (point.moust_key == 7) {
+					// 右键双击
+					::SendMessage(point.hwnd, WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
+					::SendMessage(point.hwnd, WM_RBUTTONUP, 0, MAKELPARAM(x, y));
+					Sleep(200); // 推荐200-500ms
+					::SendMessage(point.hwnd, WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
+					::SendMessage(point.hwnd, WM_RBUTTONUP, 0, MAKELPARAM(x, y));
 				}
 				
 			}
@@ -475,7 +561,7 @@ UINT BackThreadOption(LPVOID pParam)
 			loop_times--;
 			if (loop_times == 0) {
 				Wnd->isClick = false;
-				Wnd->start_btn.SetWindowTextW(_T("开始点击"));
+				Wnd->start_btn.SetWindowTextW(_T("开始"));
 				return 0;
 			};
 		}
@@ -492,11 +578,11 @@ void CiClickDlg::OnBnClickedButton1()
 	}
 	
 	if (isClick == TRUE) { 
-		start_btn.SetWindowTextW(_T("开始点击"));
+		start_btn.SetWindowTextW(_T("开始"));
 		isClick = FALSE;
 	} 
 	else {
-		start_btn.SetWindowTextW(_T("停止点击"));
+		start_btn.SetWindowTextW(_T("停止"));
 		isClick = TRUE;
 		if (isFrontOpt ==  TRUE) {
 			AfxBeginThread(FrontThreadOption, this);
@@ -553,14 +639,11 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 {
 	if (main_tab_index != 0) return;
 	if (nHotKeyId == 0x123) {
-		// TODO: 在此添加消息处理程序代码和/或调用默认值
 		if (start_watch == FALSE) return;
 		CPoint ptCursor;
 		GetCursorPos(&ptCursor);//获取鼠标位置
 
 		CWnd* hWnd = WindowFromPoint(ptCursor); // 获取窗口句柄
-
-
 
 		::ScreenToClient(hWnd->m_hWnd, &ptCursor);
 		// 窗口标题
@@ -576,14 +659,8 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		int iRow = list.GetItemCount(); //获取行数
 		list.InsertItem(iRow, x);
 		list.SetItemText(iRow, 1, y);
-		if (Event_Type == 1) {
-			list.SetItemText(iRow, 2, L"鼠标");
-			list.SetItemText(iRow, 3, L"左键单击");
-		}
-		else if (Event_Type == 2) {
-			list.SetItemText(iRow, 2, L"键盘");
-			list.SetItemText(iRow, 3, L"");
-		}
+		list.SetItemText(iRow, 2, L"鼠标");
+		list.SetItemText(iRow, 3, L"左键单击");
 		list.SetItemText(iRow, 4, str);
 		list.SetItemText(iRow, 5, _T("0"));
 
@@ -592,11 +669,9 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		pI.x = ptCursor.x;
 		pI.y = ptCursor.y;
 		pI.hwnd = hWnd->m_hWnd;
-		pI.event_type = Event_Type;
+		pI.event_type = 1;
 		pI.gap = 0;
-		if (Event_Type == 1) {
-			pI.moust_key = 1;
-		}
+		pI.moust_key = 1;
 		
 		pointInfo.push_back(pI);
 	
@@ -608,11 +683,11 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		}
 
 		if (isClick == TRUE) {
-			start_btn.SetWindowTextW(_T("开始点击"));
+			start_btn.SetWindowTextW(_T("开始"));
 			isClick = FALSE;
 		}
 		else {
-			start_btn.SetWindowTextW(_T("停止点击"));
+			start_btn.SetWindowTextW(_T("停止"));
 			isClick = TRUE;
 			if (isFrontOpt == TRUE) {
 				AfxBeginThread(FrontThreadOption, this);
@@ -621,6 +696,43 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 				AfxBeginThread(BackThreadOption, this);
 			}
 		}
+	}
+	else if (nHotKeyId == 0x126) {
+		if (start_watch == FALSE) return;
+		CPoint ptCursor;
+		GetCursorPos(&ptCursor);//获取鼠标位置
+
+		CWnd* hWnd = WindowFromPoint(ptCursor); // 获取窗口句柄
+
+		::ScreenToClient(hWnd->m_hWnd, &ptCursor);
+		// 窗口标题
+		CString str;
+		hWnd->GetWindowTextW(str);
+		wnd_title_ipt.SetWindowTextW(str);
+
+
+
+		CString x, y;
+		x.Format(_T("%d"), ptCursor.x);
+		y.Format(_T("%d"), ptCursor.y);
+		int iRow = list.GetItemCount(); //获取行数
+		list.InsertItem(iRow, x);
+		list.SetItemText(iRow, 1, y);
+	
+		list.SetItemText(iRow, 2, L"键盘");
+		list.SetItemText(iRow, 3, L"");
+		list.SetItemText(iRow, 4, str);
+		list.SetItemText(iRow, 5, _T("0"));
+
+		// 同步到数组
+		PointInfo pI;
+		pI.x = ptCursor.x;
+		pI.y = ptCursor.y;
+		pI.hwnd = hWnd->m_hWnd;
+		pI.event_type = 2;
+		pI.gap = 0;
+
+		pointInfo.push_back(pI);
 	}
 	
 	CDialogEx::OnHotKey(nHotKeyId, nKey1, nKey2);
@@ -954,4 +1066,57 @@ void CiClickDlg::OnBnClickedCheck5()
 void CiClickDlg::OnEnChangeEdit6()
 {
 	loop_times = GetDlgItemInt(IDC_EDIT6, NULL, FALSE);
+}
+
+// 修改为键盘事件
+void CiClickDlg::ChangeToKeyBd()
+{
+	pointInfo[select_row].event_type = 2;
+	list.SetItemText(select_row, 2, L"键盘");
+	list.SetItemText(select_row, 3, L"");
+}
+
+// 修改为鼠标事件
+void CiClickDlg::ChangeToMouse()
+{
+	pointInfo[select_row].event_type = 1;
+	pointInfo[select_row].moust_key = 1;
+	list.SetItemText(select_row, 2, L"鼠标");
+	list.SetItemText(select_row, 3, L"左键单击");
+}
+
+// 修改为滚轮上滚
+void CiClickDlg::ChangeToMidUp()
+{
+	pointInfo[select_row].moust_key = 3;
+	list.SetItemText(select_row, 3, L"滚轮上滚");
+}
+
+// 修改为滚轮下滚
+void CiClickDlg::ChangeToMidDown()
+{
+	pointInfo[select_row].moust_key = 4;
+	list.SetItemText(select_row, 3, L"滚轮下滚");
+}
+
+
+// 修改为滚轮单击
+void CiClickDlg::ChangeToMidClick()
+{
+	pointInfo[select_row].moust_key = 5;
+	list.SetItemText(select_row, 3, L"滚轮单击");
+}
+
+// 修改为右键单击
+void CiClickDlg::ChangeToRightClick()
+{
+	pointInfo[select_row].moust_key = 6;
+	list.SetItemText(select_row, 3, L"右键单击");
+}
+
+// 修改为右键双击
+void CiClickDlg::ChangeToRightDbClick()
+{
+	pointInfo[select_row].moust_key = 7;
+	list.SetItemText(select_row, 3, L"右键双击");
 }

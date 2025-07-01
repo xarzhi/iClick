@@ -38,7 +38,6 @@
 #define IDC_EDIT6                       1035
 #define IDC_TAB1                        1036
 #define IDC_CHECK5                      1037
-#define IDC_RADIO1                      1039
 #define ID_32772                        32772
 #define ID_32773                        32773
 #define ID_32774                        32774
@@ -55,13 +54,20 @@
 #define ID_32785                        32785
 #define ID_32786                        32786
 #define ID_32787                        32787
+#define ID_32788                        32788
+#define ID_32789                        32789
+#define ID_32790                        32790
+#define ID_32791                        32791
+#define ID_32792                        32792
+#define ID_32793                        32793
+#define ID_32794                        32794
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        160
-#define _APS_NEXT_COMMAND_VALUE         32788
+#define _APS_NEXT_COMMAND_VALUE         32795
 #define _APS_NEXT_CONTROL_VALUE         1041
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
