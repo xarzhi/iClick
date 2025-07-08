@@ -352,10 +352,11 @@ UINT FrontThreadOption(LPVOID pParam) {
 
 	while (Wnd->isClick) {
 		for (const auto& point : pointInfo) {
+			if (!Wnd->isClick) return 0;
 			if (!::IsWindow(point.hwnd)) continue;
 			::SetForegroundWindow(point.hwnd);  // 确保目标窗口在前台
 
-			Sleep(point.gap);			// 延迟
+			point.gap > 0 ? Sleep(point.gap) : NULL;		// 延迟
 
 			CPoint ptCursor = {point.x,point.y};
 			::ClientToScreen(point.hwnd, &ptCursor);
@@ -452,9 +453,9 @@ UINT FrontThreadOption(LPVOID pParam) {
 				SendInput(static_cast<UINT>(inputs2.size()), inputs2.data(), sizeof(INPUT));
 
 			}
-			Sleep(Wnd->gap);			// 单次操作间隔
+			Wnd->gap > 0 ? Sleep(Wnd->gap) : NULL;		// 单次操作间隔
 		}
-		Sleep(Wnd->loop);				// 每一轮间隔
+		Wnd->loop > 0 ? Sleep(Wnd->loop) : NULL;		// 每一轮间隔
 		if (Wnd->loop_times != 0) {
 			loop_times--;
 			if (loop_times == 0) {
@@ -477,67 +478,83 @@ UINT BackThreadOption(LPVOID pParam)
 	
 	while (Wnd->isClick) {
 		for (const auto& point : pointInfo) {
+			if (!Wnd->isClick) return 0;
 			if (!::IsWindow(point.hwnd)) continue;
-			Sleep(point.gap);			// 延迟
-			if (point.event_type == 1) {
-				// 处理鼠标事件
-				UINT Radius = Wnd->Random_Radius;
-				int x, y;
-				if (Wnd->isRandomClick) {
-					x = GetRand(point.x - Radius, point.x + Radius);
-					y = GetRand(point.y - Radius, point.y + Radius);
-				}
-				else {
-					x = point.x;
-					y = point.y;
-				}
-				if (point.moust_key == 1) {
-					// 单击
-					::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
-					::SendMessage(point.hwnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
-				}
-				else if (point.moust_key == 2) {
-					// 双击
-					 // 第一次点击
-					::SendMessage(point.hwnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
-					::SendMessage(point.hwnd, WM_LBUTTONUP, 0, MAKELPARAM(x, y));
-					// 第二次点击（双击）
-					::SendMessage(point.hwnd, WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(x, y));
-					::SendMessage(point.hwnd, WM_LBUTTONUP, 0, MAKELPARAM(x, y));
-				}
-				else if (point.moust_key == 3) {
-					// 滚轮上滚
-					UINT distance = 120;		// 滚动距离
-					::SendMessage(point.hwnd, WM_MOUSEWHEEL, MAKEWPARAM(0, distance), MAKELPARAM(x, y));
-				}
-				else if (point.moust_key == 4) {
-					// 滚轮下滚
-					UINT distance = 120;		// 滚动距离
-					::SendMessage(point.hwnd, WM_MOUSEWHEEL, MAKEWPARAM(0, distance * -1), MAKELPARAM(x, y));
-				}
-				else if (point.moust_key == 5) {
-					// 滚轮点击
-					::SendMessage(point.hwnd, WM_MBUTTONDOWN, 0, MAKELPARAM(x, y));
-					::SendMessage(point.hwnd, WM_MBUTTONUP, 0, MAKELPARAM(x, y));
-				}
-				else if (point.moust_key == 6) {
-					// 右键单击
-					::SendMessage(point.hwnd, WM_RBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
-					::SendMessage(point.hwnd, WM_RBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
-				}
-				else if (point.moust_key == 7) {
-					// 右键双击
-					::SendMessage(point.hwnd, WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
-					::SendMessage(point.hwnd, WM_RBUTTONUP, 0, MAKELPARAM(x, y));
-					Sleep(200); // 推荐200-500ms
-					::SendMessage(point.hwnd, WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
-					::SendMessage(point.hwnd, WM_RBUTTONUP, 0, MAKELPARAM(x, y));
-				}
-				
+			point.gap > 0 ? Sleep(point.gap) : NULL;		// 延迟
+			// 处理鼠标事件
+			UINT Radius = Wnd->Random_Radius;
+			CWnd* pTempWnd = CWnd::FromHandle(point.hwnd);  // 临时对象，仅当前作用域有效
+			int x, y;
+			if (Wnd->isRandomClick) {
+				x = GetRand(point.x - Radius, point.x + Radius);
+				y = GetRand(point.y - Radius, point.y + Radius);
 			}
-			else if (point.event_type == 2) {
+			else {
+				x = point.x;
+				y = point.y;
+			}
+			switch (point.event_type) {
+			case 1:
+			{
+				switch (point.moust_key) {
+				case 1:			// 单击
+				{
+					pTempWnd->SendMessage( WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+					pTempWnd->SendMessage( WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
+					break;
+				}
+				case 2:			// 双击
+				{
+					// 第一次点击
+					pTempWnd->SendMessage( WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+					pTempWnd->SendMessage( WM_LBUTTONUP, 0, MAKELPARAM(x, y));
+					// 第二次点击（双击）
+					pTempWnd->SendMessage( WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(x, y));
+					pTempWnd->SendMessage( WM_LBUTTONUP, 0, MAKELPARAM(x, y));
+					break;
+				}
+				case 3:		// 滚轮上滚
+				{
+					pTempWnd->SendMessage( WM_MOUSEWHEEL, MAKEWPARAM(0, 120), MAKELPARAM(x, y));
+					break;
+				}
+				case 4:// 滚轮下滚
+
+				{
+					pTempWnd->SendMessage( WM_MOUSEWHEEL, MAKEWPARAM(0, 120 * -1), MAKELPARAM(x, y));
+					break;
+				}
+				case 5: // 滚轮点击
+				{
+					pTempWnd->SendMessage( WM_MBUTTONDOWN, 0, MAKELPARAM(x, y));
+					pTempWnd->SendMessage( WM_MBUTTONUP, 0, MAKELPARAM(x, y));
+					break;
+				}
+
+				case 6:		// 右键单击
+				{
+					pTempWnd->SendMessage( WM_RBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+					pTempWnd->SendMessage( WM_RBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
+					break;
+				}
+				case 7:		// 右键双击
+				{
+					pTempWnd->SendMessage( WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
+					pTempWnd->SendMessage( WM_RBUTTONUP, 0, MAKELPARAM(x, y));
+					Sleep(200); // 推荐200-500ms
+					pTempWnd->SendMessage( WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
+					pTempWnd->SendMessage( WM_RBUTTONUP, 0, MAKELPARAM(x, y));
+					break;
+				}
+				default:
+					break;
+				}
+				break;
+			}
+			case 2:
+			{
 				// 处理键盘事件
-				::SetForegroundWindow(point.hwnd);  // 确保目标窗口在前台
+				pTempWnd->SetForegroundWindow();  // 确保目标窗口在前台
 				DWORD modifiers = point.hotKeyInfo.wModifiers;
 				DWORD virtualKey = point.hotKeyInfo.wVirtualKey;
 
@@ -553,10 +570,15 @@ UINT BackThreadOption(LPVOID pParam)
 				if (modifiers & HOTKEYF_ALT) keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);   // 松开 ALT
 				if (modifiers & HOTKEYF_SHIFT) keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);  // 松开 SHIFT
 				if (modifiers & HOTKEYF_CONTROL) keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);  // 松开 Ctrl
+				break;
 			}
-			Sleep(Wnd->gap);			// 单次操作间隔
+			default:
+				break;
+			}
+		
+			Wnd->gap > 0 ? Sleep(Wnd->gap) : NULL;		// 单次操作间隔
 		}
-		Sleep(Wnd->loop);				// 每一轮间隔
+		Wnd->loop > 0 ? Sleep(Wnd->loop) : NULL;		// 每一轮间隔
 		if (Wnd->loop_times != 0) {
 			loop_times--;
 			if (loop_times == 0) {
