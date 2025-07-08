@@ -53,7 +53,7 @@ BOOL FrontDlg::OnInitDialog()
 	CDialogEx::OnInitDialog();
 
 	start_hotkey_ipt.SetHotKey(start_hotkey,NULL);
-	RegisterHotKey(m_hWnd, 0x125, NULL, VK_F8);
+	RegisterHotKey(m_hWnd, 0x125, NULL, VK_F9);
 
 	gap_ipt.SetWindowTextW(_T("20"));
 	loop_ipt.SetWindowTextW(_T("0"));

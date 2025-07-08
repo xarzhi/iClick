@@ -34,7 +34,7 @@ protected:
 
 public:
 	UINT gap = 20;
-	UINT start_hotkey = VK_F8;
+	UINT start_hotkey = VK_F9;
 	CHotKeyCtrl start_hotkey_ipt;
 	CEdit gap_ipt;
 	int main_tab_index;
