@@ -112,8 +112,6 @@ void FrontDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 // 快捷键内容改变
 void FrontDlg::OnHotKeyChanged()
 {
-
-	
 	WORD wVirtualKeyCode;
 	WORD wModifiers;
 	UINT mod = 0;

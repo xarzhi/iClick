@@ -6,21 +6,47 @@
 
 
 #define WM_MOUSEBUTTONDOWN WM_USER+777
-struct HotKeyInfo {
+#include <vector>
+using namespace std;
+
+// 键盘事件热键结构体
+ struct HotKeyInfo {
 	WORD wVirtualKey='/0';      // 主键虚拟码（如VK_A）
 	WORD wModifiers= '/0';       // 修饰键（如HOTKEYF_CONTROL）
 	CString strDisplay=L"";    // 显示文本（如"Ctrl+A"）
 };
 
+// 列表中单行数据结构体
 typedef struct PointInfo {
 	int x = 0;
 	int y = 0;
-	HWND hwnd = NULL;
+	HWND hwnd = NULL;	// 窗口句柄
+	CString className;  // 窗口类名
 	int event_type = 1;	// 事件类型        1：鼠标事件   2：键盘事件
 	int moust_key = 1;	// 鼠标点击类型    1: 左键单机   2：左键双击  3：滚轮上滚  4：滚轮下滚 5：滚轮单击 6：右键单击 7：右键双击
 	UINT gap = 20;
+	CString title;
 	HotKeyInfo hotKeyInfo;
 }PointInfo;
+
+
+// 总体配置结构体
+typedef struct Config {
+	UINT loop_times=0;  // 循环次数
+	BOOL isFrontOpt=FALSE;	// 是否前台操作
+	BOOL need_hide= FALSE; // 是否选择时隐藏主窗口
+	BOOL isRandomClick= FALSE;  // 是否模糊点击
+	BOOL setOnTop=TRUE;  // 是否窗口置顶
+	UINT Random_Radius=0; // 模糊点击半径
+	UINT gap=20; // 总操作间隔
+	UINT loop=0; // 循环间隔
+	HotKeyInfo start_hotkey = {};		//	开始快捷键
+	HotKeyInfo mouse_hotkey = {};		//	鼠标事件快捷键
+	HotKeyInfo keyboard_hotkey = {};		//	键盘事件快捷键
+	vector<PointInfo> List;
+}Config;
+
+
 
 // CiClickDlg 对话框
 class CiClickDlg : public CDialogEx
@@ -74,12 +100,12 @@ public:
 //	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	CButton setOnTop_Check;
+	BOOL setOnTop=TRUE;
 	CEdit hwnd_ipt;
 	CHotKeyCtrl hotkey1;
 	afx_msg void OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2);
 	CEdit wnd_title_ipt;
 	CButton start_Watch_Check;
-	afx_msg void OnNMThemeChangedHotkey3(NMHDR* pNMHDR, LRESULT* pResult);
 	BOOL isClick=FALSE;
 	UINT gap = 20;
 	UINT loop = 0;
@@ -146,5 +172,12 @@ public:
 	afx_msg void ChangeToMidClick();
 	afx_msg void ChangeToRightClick();
 	afx_msg void ChangeToRightDbClick();
+	afx_msg void OnBnClickedButton3();
+	afx_msg void OnBnClickedButton2();
+	void SaveInitConfig(CString Section, CString Key, CString Value);
+	void SaveHotKey(CHotKeyCtrl& hotkey, CString Section);
+	CString ReadSection(CString path, CString Section, CString Key);
+	vector<CString> GetPointSections(CString iniPath);
+
 };
 
