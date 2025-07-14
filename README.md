@@ -1,9 +1,5 @@
 # iClick 键鼠连点器
 
-开发不易，富哥心情好话的赏点
-
-<img width="496" height="677" alt="微信图片_20250714213102" src="https://github.com/user-attachments/assets/e48b9576-739d-4d25-9596-b590794c613f" />
-
 
 采用C++的MFC框架开发，支持后台键鼠操作
 - 支持模糊点击
