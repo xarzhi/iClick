@@ -45,6 +45,9 @@
     <ClInclude Include="FrontDlg.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="TimesDlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="iClick.cpp">
@@ -66,6 +69,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="FrontDlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="TimesDlg.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

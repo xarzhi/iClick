@@ -25,6 +25,7 @@ typedef struct PointInfo {
 	int event_type = 1;	// 事件类型        1：鼠标事件   2：键盘事件
 	int moust_key = 1;	// 鼠标点击类型    1: 左键单机   2：左键双击  3：滚轮上滚  4：滚轮下滚 5：滚轮单击 6：右键单击 7：右键双击
 	UINT gap = 20;
+	UINT times = 1;
 	CString title;
 	HotKeyInfo hotKeyInfo;
 }PointInfo;
@@ -179,5 +180,7 @@ public:
 	CString ReadSection(CString path, CString Section, CString Key);
 	vector<CString> GetPointSections(CString iniPath);
 
+	afx_msg void SetTimes2();
+	afx_msg void SetTimes1();
 };
 

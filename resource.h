@@ -18,6 +18,7 @@
 #define IDD_MAIN_DIALOG                 154
 #define IDD_GAP_DIALOG                  156
 #define IDD_FRONTDLG                    158
+#define IDD_TIMES_DLG                   160
 #define IDC_HOTKEY3                     1007
 #define IDC_BUTTON1                     1008
 #define IDC_EDIT2                       1009
@@ -40,6 +41,7 @@
 #define IDC_EDIT6                       1035
 #define IDC_TAB1                        1036
 #define IDC_CHECK5                      1037
+#define IDC_BUTTON4                     1043
 #define ID_32772                        32772
 #define ID_32773                        32773
 #define ID_32774                        32774
@@ -63,14 +65,16 @@
 #define ID_32792                        32792
 #define ID_32793                        32793
 #define ID_32794                        32794
+#define ID_32795                        32795
+#define ID_32796                        32796
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        160
-#define _APS_NEXT_COMMAND_VALUE         32795
-#define _APS_NEXT_CONTROL_VALUE         1042
+#define _APS_NEXT_RESOURCE_VALUE        162
+#define _APS_NEXT_COMMAND_VALUE         32797
+#define _APS_NEXT_CONTROL_VALUE         1044
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

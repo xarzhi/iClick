@@ -9,6 +9,7 @@
 #include "afxdialogex.h"
 #include "Key_Select.h"
 #include "MainDlg.h"
+#include "TimesDlg.h"
 #include <shlobj.h> // 头文件
 #include "GapModal.h"
 
@@ -104,6 +105,8 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_COMMAND(ID_32792, &CiClickDlg::ChangeToRightDbClick)
 	ON_BN_CLICKED(IDC_BUTTON3, &CiClickDlg::OnBnClickedButton3)
 	ON_BN_CLICKED(IDC_BUTTON2, &CiClickDlg::OnBnClickedButton2)
+	ON_COMMAND(ID_32795, &CiClickDlg::SetTimes2)
+	ON_COMMAND(ID_32796, &CiClickDlg::SetTimes1)
 END_MESSAGE_MAP()
 
 
@@ -146,10 +149,11 @@ BOOL CiClickDlg::OnInitDialog()
 	list.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);	// 整行选择、网格线
 	list.InsertColumn(0, _T("X坐标"), LVCFMT_LEFT, 50);
 	list.InsertColumn(1, _T("Y坐标"), LVCFMT_LEFT, 50);	
-	list.InsertColumn(2, _T("操作类型"), LVCFMT_LEFT,100);	
-	list.InsertColumn(3, _T("操作方式"), LVCFMT_LEFT, 100);	
+	list.InsertColumn(2, _T("操作类型"), LVCFMT_LEFT,70);	
+	list.InsertColumn(3, _T("操作方式"), LVCFMT_LEFT, 70);	
 	list.InsertColumn(4, _T("窗口标题"), LVCFMT_LEFT, 120);
 	list.InsertColumn(5, _T("延迟"), LVCFMT_LEFT, 60);
+	list.InsertColumn(6, _T("执行次数"), LVCFMT_LEFT, 60);
 
 
 	// 为列表视图控件添加全行选中和栅格风格   
@@ -359,7 +363,6 @@ UINT FrontThreadOption(LPVOID pParam) {
 
 	while (Wnd->isClick) {
 		for (const auto& point : pointInfo) {
-			::MessageBox(NULL, L"", L"", 0);
 
 			if (!Wnd->isClick) return 0;
 			if (!::IsWindow(point.hwnd)) continue;
@@ -388,85 +391,90 @@ UINT FrontThreadOption(LPVOID pParam) {
 			// 设置鼠标位置
 			SetCursorPos(x, y);
 
-			if (point.event_type == 1) {		// 鼠标事件
-				if (point.moust_key == 1) {// 单击
-					SendLeftClick();
+			for (int times = point.times; times > 0; times--) {
+				if (point.event_type == 1) {		// 鼠标事件
+					if (point.moust_key == 1) {// 单击
+						SendLeftClick();
+					}
+					else if (point.moust_key == 2) {	// 双击
+						SendLeftClick();
+						Sleep(100);					// 模拟双击间隔
+						SendLeftClick();
+					}
+					else if (point.moust_key == 3) {	// 滚轮上滑
+						INPUT input = { 0 };
+						input.type = INPUT_MOUSE;
+						input.mi.dwFlags = MOUSEEVENTF_WHEEL;
+						input.mi.mouseData = 120; // 正值表示向上滚动
+						SendInput(1, &input, sizeof(INPUT));
+					}
+					else if (point.moust_key == 4) {// 滚轮下滑
+						INPUT input = { 0 };
+						input.type = INPUT_MOUSE;
+						input.mi.dwFlags = MOUSEEVENTF_WHEEL;
+						input.mi.mouseData = -120; // 正值表示向上滚动
+						SendInput(1, &input, sizeof(INPUT));
+					}
+					else if (point.moust_key == 5) {// 滚轮点击
+						INPUT inputs[2] = { 0 };
+						// 中键按下
+						inputs[0].type = INPUT_MOUSE;
+						inputs[0].mi.dwFlags = MOUSEEVENTF_MIDDLEDOWN;
+						// 中键释放
+						inputs[1].type = INPUT_MOUSE;
+						inputs[1].mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
+						SendInput(2, inputs, sizeof(INPUT));
+					}
+					else if (point.moust_key == 6) {// 右键单击
+						RightClick();
+					}
+					else if (point.moust_key == 7) {// 右键双击
+						RightClick();       // 第一次单击
+						Sleep(100);    // 间隔 100ms（系统默认双击间隔为 500ms）
+						RightClick();       // 第二次单击
+					}
 				}
-				else if (point.moust_key == 2) {	// 双击
-					SendLeftClick();
-					Sleep(100);					// 模拟双击间隔
-					SendLeftClick();
+				else if (point.event_type == 2) {			// 键盘事件
+					std::vector<INPUT> inputs1;
+					std::vector<INPUT> inputs2;
+
+
+					DWORD modifiers = point.hotKeyInfo.wModifiers;
+
+					// 1. 按下修饰键（如果存在）
+					if (modifiers & HOTKEYF_CONTROL) inputs1.push_back({ INPUT_KEYBOARD, { VK_CONTROL } });
+					if (modifiers & HOTKEYF_SHIFT) inputs1.push_back({ INPUT_KEYBOARD, { VK_SHIFT } });
+					if (modifiers & HOTKEYF_ALT) inputs1.push_back({ INPUT_KEYBOARD, { VK_MENU } });
+					// 2. 按下主键
+					INPUT down;
+					down.type = INPUT_KEYBOARD;
+					down.ki.wVk = point.hotKeyInfo.wVirtualKey;
+					down.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
+					down.ki.dwFlags = KEYEVENTF_SCANCODE;  // 按键按下
+					inputs2.push_back(down);
+
+
+					INPUT up;
+					up.type = INPUT_KEYBOARD;
+					up.ki.wVk = point.hotKeyInfo.wVirtualKey;
+					up.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
+					up.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;  // 按键按下
+					inputs2.push_back(up);
+
+					if (modifiers & HOTKEYF_ALT) inputs2.push_back({ INPUT_KEYBOARD, { VK_MENU ,KEYEVENTF_KEYUP} });
+					if (modifiers & HOTKEYF_SHIFT) inputs2.push_back({ INPUT_KEYBOARD, { VK_SHIFT ,KEYEVENTF_KEYUP} });
+					if (modifiers & HOTKEYF_CONTROL) inputs2.push_back({ INPUT_KEYBOARD, { VK_CONTROL ,KEYEVENTF_KEYUP} });
+
+					SendInput(static_cast<UINT>(inputs1.size()), inputs1.data(), sizeof(INPUT));
+					Sleep(8);
+					SendInput(static_cast<UINT>(inputs2.size()), inputs2.data(), sizeof(INPUT));
+
 				}
-				else if (point.moust_key == 3) {	// 滚轮上滑
-					INPUT input = { 0 };
-					input.type = INPUT_MOUSE;
-					input.mi.dwFlags = MOUSEEVENTF_WHEEL;
-					input.mi.mouseData = 120; // 正值表示向上滚动
-					SendInput(1, &input, sizeof(INPUT));
-				}
-				else if (point.moust_key == 4) {// 滚轮下滑
-					INPUT input = { 0 };
-					input.type = INPUT_MOUSE;
-					input.mi.dwFlags = MOUSEEVENTF_WHEEL;
-					input.mi.mouseData = -120; // 正值表示向上滚动
-					SendInput(1, &input, sizeof(INPUT));
-				}
-				else if (point.moust_key == 5) {// 滚轮点击
-					INPUT inputs[2] = { 0 };
-					// 中键按下
-					inputs[0].type = INPUT_MOUSE;
-					inputs[0].mi.dwFlags = MOUSEEVENTF_MIDDLEDOWN;
-					// 中键释放
-					inputs[1].type = INPUT_MOUSE;
-					inputs[1].mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
-					SendInput(2, inputs, sizeof(INPUT));
-				}
-				else if (point.moust_key == 6) {// 右键单击
-					RightClick();       
-				}
-				else if (point.moust_key == 7) {// 右键双击
-					RightClick();       // 第一次单击
-					Sleep(100);    // 间隔 100ms（系统默认双击间隔为 500ms）
-					RightClick();       // 第二次单击
-				}
+				Wnd->gap > 0 ? Sleep(Wnd->gap) : NULL;		// 单次操作间隔
+
 			}
-			else if (point.event_type == 2) {			// 键盘事件
-				std::vector<INPUT> inputs1;
-				std::vector<INPUT> inputs2;
 
 
-				DWORD modifiers = point.hotKeyInfo.wModifiers;
-
-				// 1. 按下修饰键（如果存在）
-				if (modifiers & HOTKEYF_CONTROL) inputs1.push_back({ INPUT_KEYBOARD, { VK_CONTROL } });
-				if (modifiers & HOTKEYF_SHIFT) inputs1.push_back({ INPUT_KEYBOARD, { VK_SHIFT } });
-				if (modifiers & HOTKEYF_ALT) inputs1.push_back({ INPUT_KEYBOARD, { VK_MENU } });
-				// 2. 按下主键
-				INPUT down;
-				down.type = INPUT_KEYBOARD;
-				down.ki.wVk = point.hotKeyInfo.wVirtualKey;
-				down.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
-				down.ki.dwFlags = KEYEVENTF_SCANCODE;  // 按键按下
-				inputs2.push_back(down);
-
-
-				INPUT up;
-				up.type = INPUT_KEYBOARD;
-				up.ki.wVk = point.hotKeyInfo.wVirtualKey;
-				up.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
-				up.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;  // 按键按下
-				inputs2.push_back(up);
-
-				if (modifiers & HOTKEYF_ALT) inputs2.push_back({ INPUT_KEYBOARD, { VK_MENU ,KEYEVENTF_KEYUP} });
-				if (modifiers & HOTKEYF_SHIFT) inputs2.push_back({ INPUT_KEYBOARD, { VK_SHIFT ,KEYEVENTF_KEYUP} });
-				if (modifiers & HOTKEYF_CONTROL) inputs2.push_back({ INPUT_KEYBOARD, { VK_CONTROL ,KEYEVENTF_KEYUP} });
-
-				SendInput(static_cast<UINT>(inputs1.size()), inputs1.data(), sizeof(INPUT));
-				Sleep(8);
-				SendInput(static_cast<UINT>(inputs2.size()), inputs2.data(), sizeof(INPUT));
-
-			}
-			Wnd->gap > 0 ? Sleep(Wnd->gap) : NULL;		// 单次操作间隔
 		}
 		Wnd->loop > 0 ? Sleep(Wnd->loop) : NULL;		// 每一轮间隔
 		if (Wnd->loop_times != 0) {
@@ -508,90 +516,95 @@ UINT BackThreadOption(LPVOID pParam)
 				x = point.x;
 				y = point.y;
 			}
-			switch (point.event_type) {
-			case 1:
-			{
-				switch (point.moust_key) {
-				case 1:			// 单击
-				{
-					pTempWnd->SendMessage( WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
-					pTempWnd->SendMessage( WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
-					break;
-				}
-				case 2:			// 双击
-				{
-					// 第一次点击
-					pTempWnd->SendMessage( WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
-					pTempWnd->SendMessage( WM_LBUTTONUP, 0, MAKELPARAM(x, y));
-					// 第二次点击（双击）
-					pTempWnd->SendMessage( WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(x, y));
-					pTempWnd->SendMessage( WM_LBUTTONUP, 0, MAKELPARAM(x, y));
-					break;
-				}
-				case 3:		// 滚轮上滚
-				{
-					pTempWnd->SendMessage( WM_MOUSEWHEEL, MAKEWPARAM(0, 120), MAKELPARAM(x, y));
-					break;
-				}
-				case 4:// 滚轮下滚
 
+			for (int times = point.times; times > 0; times--) {
+				switch (point.event_type) {
+				case 1:
 				{
-					pTempWnd->SendMessage( WM_MOUSEWHEEL, MAKEWPARAM(0, 120 * -1), MAKELPARAM(x, y));
-					break;
-				}
-				case 5: // 滚轮点击
-				{
-					pTempWnd->SendMessage( WM_MBUTTONDOWN, 0, MAKELPARAM(x, y));
-					pTempWnd->SendMessage( WM_MBUTTONUP, 0, MAKELPARAM(x, y));
-					break;
-				}
+					switch (point.moust_key) {
+					case 1:			// 单击
+					{
+						pTempWnd->SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+						pTempWnd->SendMessage(WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
+						break;
+					}
+					case 2:			// 双击
+					{
+						// 第一次点击
+						pTempWnd->SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+						pTempWnd->SendMessage(WM_LBUTTONUP, 0, MAKELPARAM(x, y));
+						// 第二次点击（双击）
+						pTempWnd->SendMessage(WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(x, y));
+						pTempWnd->SendMessage(WM_LBUTTONUP, 0, MAKELPARAM(x, y));
+						break;
+					}
+					case 3:		// 滚轮上滚
+					{
+						pTempWnd->SendMessage(WM_MOUSEWHEEL, MAKEWPARAM(0, 120), MAKELPARAM(x, y));
+						break;
+					}
+					case 4:// 滚轮下滚
 
-				case 6:		// 右键单击
-				{
-					pTempWnd->SendMessage( WM_RBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
-					pTempWnd->SendMessage( WM_RBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
+					{
+						pTempWnd->SendMessage(WM_MOUSEWHEEL, MAKEWPARAM(0, 120 * -1), MAKELPARAM(x, y));
+						break;
+					}
+					case 5: // 滚轮点击
+					{
+						pTempWnd->SendMessage(WM_MBUTTONDOWN, 0, MAKELPARAM(x, y));
+						pTempWnd->SendMessage(WM_MBUTTONUP, 0, MAKELPARAM(x, y));
+						break;
+					}
+
+					case 6:		// 右键单击
+					{
+						pTempWnd->SendMessage(WM_RBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+						pTempWnd->SendMessage(WM_RBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
+						break;
+					}
+					case 7:		// 右键双击
+					{
+						pTempWnd->SendMessage(WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
+						pTempWnd->SendMessage(WM_RBUTTONUP, 0, MAKELPARAM(x, y));
+						Sleep(200); // 推荐200-500ms
+						pTempWnd->SendMessage(WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
+						pTempWnd->SendMessage(WM_RBUTTONUP, 0, MAKELPARAM(x, y));
+						break;
+					}
+					default:
+						break;
+					}
 					break;
 				}
-				case 7:		// 右键双击
+				case 2:
 				{
-					pTempWnd->SendMessage( WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
-					pTempWnd->SendMessage( WM_RBUTTONUP, 0, MAKELPARAM(x, y));
-					Sleep(200); // 推荐200-500ms
-					pTempWnd->SendMessage( WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
-					pTempWnd->SendMessage( WM_RBUTTONUP, 0, MAKELPARAM(x, y));
+					// 处理键盘事件
+					pTempWnd->SetForegroundWindow();  // 确保目标窗口在前台
+					DWORD modifiers = point.hotKeyInfo.wModifiers;
+					DWORD virtualKey = point.hotKeyInfo.wVirtualKey;
+
+					// 按下修饰符键（如果有）
+					if (modifiers & HOTKEYF_CONTROL) keybd_event(VK_CONTROL, 0, 0, 0);		// 按下 Ctrl
+					if (modifiers & HOTKEYF_SHIFT) keybd_event(VK_SHIFT, 0, 0, 0);        // 按下 Shift
+					if (modifiers & HOTKEYF_ALT) keybd_event(VK_MENU, 0, 0, 0);        // 按下 ALT
+
+					keybd_event(virtualKey, MapVirtualKey(virtualKey, 0), 0, 0);
+					Sleep(8);
+					keybd_event(virtualKey, MapVirtualKey(virtualKey, 0), KEYEVENTF_KEYUP, 0);
+
+					if (modifiers & HOTKEYF_ALT) keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);   // 松开 ALT
+					if (modifiers & HOTKEYF_SHIFT) keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);  // 松开 SHIFT
+					if (modifiers & HOTKEYF_CONTROL) keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);  // 松开 Ctrl
 					break;
 				}
 				default:
 					break;
 				}
-				break;
-			}
-			case 2:
-			{
-				// 处理键盘事件
-				pTempWnd->SetForegroundWindow();  // 确保目标窗口在前台
-				DWORD modifiers = point.hotKeyInfo.wModifiers;
-				DWORD virtualKey = point.hotKeyInfo.wVirtualKey;
 
-				// 按下修饰符键（如果有）
-				if (modifiers & HOTKEYF_CONTROL) keybd_event(VK_CONTROL, 0, 0, 0);		// 按下 Ctrl
-				if (modifiers & HOTKEYF_SHIFT) keybd_event(VK_SHIFT, 0, 0, 0);        // 按下 Shift
-				if (modifiers & HOTKEYF_ALT) keybd_event(VK_MENU, 0, 0, 0);        // 按下 ALT
-
-				keybd_event(virtualKey, MapVirtualKey(virtualKey, 0), 0, 0);
-				Sleep(8);
-				keybd_event(virtualKey, MapVirtualKey(virtualKey, 0), KEYEVENTF_KEYUP, 0);
-
-				if (modifiers & HOTKEYF_ALT) keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);   // 松开 ALT
-				if (modifiers & HOTKEYF_SHIFT) keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);  // 松开 SHIFT
-				if (modifiers & HOTKEYF_CONTROL) keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);  // 松开 Ctrl
-				break;
+				Wnd->gap > 0 ? Sleep(Wnd->gap) : NULL;		// 单次操作间隔
 			}
-			default:
-				break;
-			}
-		
-			Wnd->gap > 0 ? Sleep(Wnd->gap) : NULL;		// 单次操作间隔
+
+			
 		}
 		Wnd->loop > 0 ? Sleep(Wnd->loop) : NULL;		// 每一轮间隔
 		if (Wnd->loop_times != 0) {
@@ -701,6 +714,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		list.SetItemText(iRow, 3, L"左键单击");
 		list.SetItemText(iRow, 4, str);
 		list.SetItemText(iRow, 5, _T("0"));
+		list.SetItemText(iRow, 6, _T("1"));
 
 		// 同步到数组
 		PointInfo pI;
@@ -710,6 +724,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		pI.event_type = 1;
 		pI.gap = 0;
 		pI.moust_key = 1;
+		pI.times = 1;
 		
 		pointInfo.push_back(pI);
 	
@@ -761,6 +776,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		list.SetItemText(iRow, 3, L"");
 		list.SetItemText(iRow, 4, str);
 		list.SetItemText(iRow, 5, _T("0"));
+		list.SetItemText(iRow, 6, _T("1"));
 
 		// 同步到数组
 		PointInfo pI;
@@ -769,6 +785,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		pI.hwnd = hWnd->m_hWnd;
 		pI.event_type = 2;
 		pI.gap = 0;
+		pI.times = 1;
 
 		TCHAR szClassName[256] = { 0 };
 		int len = ::GetClassName(hWnd->m_hWnd, szClassName, 256);
@@ -952,6 +969,7 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		}
 		list.SetItemText(iRow, 4, str);
 		list.SetItemText(iRow, 5, _T("0"));
+		list.SetItemText(iRow, 6, _T("1"));
 
 		PointInfo pI;
 		pI.x = ptCursor.x;
@@ -960,6 +978,7 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		pI.event_type = Event_Type;
 		pI.title = str;
 		pI.gap = 0;
+		pI.times = 1;
 		if (Event_Type==1) {
 			pI.moust_key = 1;
 		}
@@ -1293,8 +1312,6 @@ void CiClickDlg::OnBnClickedButton3()
 
 			SaveInitConfig(strSection, _T("Title"), point.title);
 
-
-
 			if (point.event_type == 2) {
 				DWORD modifiers = point.hotKeyInfo.wModifiers;
 				SaveInitConfig(strSection, _T("Ctrl"), modifiers & HOTKEYF_CONTROL ? _T("1") : _T("0"));
@@ -1447,3 +1464,26 @@ void CiClickDlg::OnBnClickedButton2()
 	}
 }
 
+
+
+void CiClickDlg::SetTimes2()
+{
+	TimesDlg timesModal(NULL, pointInfo[select_row].times);
+	if (timesModal.DoModal() == IDOK) {
+		pointInfo[select_row].times = timesModal.times;
+		CString str;
+		str.Format(_T("%d"), timesModal.times);
+		list.SetItemText(select_row, 6, str);
+	}
+}
+
+void CiClickDlg::SetTimes1()
+{
+	TimesDlg timesModal(NULL, pointInfo[select_row].times);
+	if (timesModal.DoModal() == IDOK) {
+		pointInfo[select_row].times = timesModal.times;
+		CString str;
+		str.Format(_T("%d"), timesModal.times);
+		list.SetItemText(select_row, 6, str);
+	}
+}
