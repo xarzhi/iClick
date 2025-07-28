@@ -182,5 +182,8 @@ public:
 
 	afx_msg void SetTimes2();
 	afx_msg void SetTimes1();
+	CButton read_btn;
+	CButton save_btn;
+	CButton record_btn;
 };
 

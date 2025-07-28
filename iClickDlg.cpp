@@ -56,6 +56,9 @@ void CiClickDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT6, loop_edit);
 	DDX_Control(pDX, IDC_CHECK5, isfront_check);
 	DDX_Control(pDX, IDC_HOTKEY2, keybd_hotkey_ipt);
+	DDX_Control(pDX, IDC_BUTTON2, read_btn);
+	DDX_Control(pDX, IDC_BUTTON3, save_btn);
+	DDX_Control(pDX, IDC_BUTTON4, record_btn);
 }
 
 BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
@@ -218,6 +221,11 @@ BOOL CiClickDlg::OnInitDialog()
 	CreateTip(gap_tip, IDC_EDIT2, _T("每次操作后的间隔"));
 	CreateTip(loop_gap_tip, IDC_EDIT5, _T("整个列表的操作执行一边后的间隔"));
 
+
+
+	save_btn.EnableWindow(FALSE);
+	read_btn.EnableWindow(FALSE);
+	record_btn.EnableWindow(FALSE);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -1118,6 +1126,9 @@ void CiClickDlg::OnBnClickedCheck5()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	isFrontOpt = isfront_check.GetCheck();
+	save_btn.EnableWindow(isFrontOpt);
+	read_btn.EnableWindow(isFrontOpt);
+	record_btn.EnableWindow(isFrontOpt);
 }
 
 void CiClickDlg::OnEnChangeEdit6()
