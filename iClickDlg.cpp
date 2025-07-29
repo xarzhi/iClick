@@ -23,10 +23,21 @@ using namespace std;
 
 
 vector<PointInfo> pointInfo;
+LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
+
+LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
+
+
+
+HHOOK g_hMouseHook = NULL;
+HHOOK g_hKeyboardHook = NULL;
+CiClickDlg* g_pThis = nullptr;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+
 
 
 
@@ -67,7 +78,6 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_EN_CHANGE(IDC_EDIT2, &CiClickDlg::OnEnChangeEdit2)
 	ON_BN_CLICKED(IDC_CHECK2, &CiClickDlg::OnBnClickedCheck2)
-	ON_STN_CLICKED(IDC_STATIC_PIC, &CiClickDlg::OnStnClickedStaticPic)
 	ON_BN_CLICKED(IDC_BUTTON1, &CiClickDlg::OnBnClickedButton1)
 	ON_BN_CLICKED(IDC_CHECK3, &CiClickDlg::OnBnClickedCheck3)
 //	ON_WM_MOUSEMOVE()
@@ -110,6 +120,7 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON2, &CiClickDlg::OnBnClickedButton2)
 	ON_COMMAND(ID_32795, &CiClickDlg::SetTimes2)
 	ON_COMMAND(ID_32796, &CiClickDlg::SetTimes1)
+	ON_BN_CLICKED(IDC_BUTTON4, &CiClickDlg::OnBnClickedButton4)
 END_MESSAGE_MAP()
 
 
@@ -184,6 +195,7 @@ BOOL CiClickDlg::OnInitDialog()
 	start_hotkey.SetHotKey(VK_F8,NULL);
 	RegisterHotKey(m_hWnd, 0x124, NULL, VK_F8);
 
+	RegisterHotKey(m_hWnd, 0x128, MOD_CONTROL, 'R');
 
 	random_check.SetCheck(isRandomClick);
 
@@ -289,11 +301,7 @@ HCURSOR CiClickDlg::OnQueryDragIcon()
 }
 
 
-void CiClickDlg::OnNMOutofmemoryHotkey1(NMHDR* pNMHDR, LRESULT* pResult)
-{
-	// TODO: 在此添加控件通知处理程序代码
-	*pResult = 0;
-}
+
 
 void CiClickDlg::OnEnChangeEdit2()
 {
@@ -323,10 +331,7 @@ void CiClickDlg::OnBnClickedCheck2()
 	start_watch = start_Watch_Check.GetCheck();
 }
 
-void CiClickDlg::OnStnClickedStaticPic()
-{
-	//MessageBox(_T("asdasd"));
-}
+
 
 int GetRand(int MIN, int MAX)//产生随机数
 {
@@ -334,12 +339,6 @@ int GetRand(int MIN, int MAX)//产生随机数
 	    max = RAND_MAX;//rand()函数随机数的最大值
 	    return (int)(rand() * (MAX - MIN) / max + MIN);
 }
-
-long PixelToAbsolute(int pos, bool isX) {
-	int screenRes = isX ? GetSystemMetrics(SM_CXSCREEN) : GetSystemMetrics(SM_CYSCREEN);
-	return static_cast<long>((pos * 65535) / (screenRes - 1));
-}
-
 
 void SendLeftClick() {
 	INPUT inputs[2] = {};
@@ -371,18 +370,23 @@ UINT FrontThreadOption(LPVOID pParam) {
 
 	while (Wnd->isClick) {
 		for (const auto& point : pointInfo) {
-
-			if (!Wnd->isClick) return 0;
-			if (!::IsWindow(point.hwnd)) continue;
-
-			CWnd* pTempWnd = CWnd::FromHandle(point.hwnd);  // 临时对象，仅当前作用域有效
-
-			pTempWnd->SetForegroundWindow();
-
 			point.gap > 0 ? Sleep(point.gap) : NULL;		// 延迟
 
-			CPoint ptCursor = {point.x,point.y};
-			pTempWnd->ClientToScreen(&ptCursor);
+			if (!Wnd->isClick) return 0;
+
+			CPoint ptCursor = { point.x,point.y };
+
+			if (::IsWindow(point.hwnd)) {
+				CWnd* pTempWnd = CWnd::FromHandle(point.hwnd);  // 临时对象，仅当前作用域有效
+				pTempWnd->SetForegroundWindow();
+				pTempWnd->ClientToScreen(&ptCursor);
+			}
+			else {
+				ptCursor.x = point.screenX;
+				ptCursor.y = point.screenY;
+			}
+
+	
 
 
 			// 设置模糊点击
@@ -440,6 +444,24 @@ UINT FrontThreadOption(LPVOID pParam) {
 						RightClick();       // 第一次单击
 						Sleep(100);    // 间隔 100ms（系统默认双击间隔为 500ms）
 						RightClick();       // 第二次单击
+					}
+					else if (point.moust_key == 8) {// 鼠标移动
+						SetCursorPos(point.screenX, point.screenY);
+					}
+					else if (point.moust_key == 9) {// 左键按下
+						INPUT inputs[1] = {};
+						inputs[0].type = INPUT_MOUSE;
+						inputs[0].mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_LEFTDOWN;
+
+						SendInput(1, inputs, sizeof(INPUT));
+					}
+					else if (point.moust_key == 10) {// 左键松开
+						INPUT inputs[1] = {};
+					
+						inputs[0].type = INPUT_MOUSE;
+						inputs[0].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+
+						SendInput(1, inputs, sizeof(INPUT));
 					}
 				}
 				else if (point.event_type == 2) {			// 键盘事件
@@ -636,11 +658,10 @@ void CiClickDlg::OnBnClickedButton1()
 	}
 	
 	if (isClick == TRUE) { 
-		start_btn.SetWindowTextW(_T("开始"));
 		isClick = FALSE;
+		start_btn.SetWindowTextW(_T("开始"));
 	} 
 	else {
-		start_btn.SetWindowTextW(_T("停止"));
 		isClick = TRUE;
 		if (isFrontOpt ==  TRUE) {
 			AfxBeginThread(FrontThreadOption, this);
@@ -648,7 +669,14 @@ void CiClickDlg::OnBnClickedButton1()
 		else {
 			AfxBeginThread(BackThreadOption, this);
 		}
+		start_btn.SetWindowTextW(_T("停止"));
 	}
+	if (isFrontOpt == TRUE) {
+		save_btn.EnableWindow(!isClick);
+		read_btn.EnableWindow(!isClick);
+		record_btn.EnableWindow(!isClick);
+	}
+
 }
 
 
@@ -701,7 +729,8 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		if (start_watch == FALSE) return;
 		CPoint ptCursor;
 		GetCursorPos(&ptCursor);//获取鼠标位置
-
+		int ptScreenX = ptCursor.x;
+		int ptScreenY = ptCursor.y;
 		CWnd* hWnd = WindowFromPoint(ptCursor); // 获取窗口句柄
 
 		::ScreenToClient(hWnd->m_hWnd, &ptCursor);
@@ -728,6 +757,8 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		PointInfo pI;
 		pI.x = ptCursor.x;
 		pI.y = ptCursor.y;
+		pI.screenX = ptScreenX;
+		pI.screenY = ptScreenY;
 		pI.hwnd = hWnd->m_hWnd;
 		pI.event_type = 1;
 		pI.gap = 0;
@@ -748,7 +779,6 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 			isClick = FALSE;
 		}
 		else {
-			start_btn.SetWindowTextW(_T("停止"));
 			isClick = TRUE;
 			if (isFrontOpt == TRUE) {
 				AfxBeginThread(FrontThreadOption, this);
@@ -756,15 +786,24 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 			else {
 				AfxBeginThread(BackThreadOption, this);
 			}
+			start_btn.SetWindowTextW(_T("停止"));
+
+		}
+		if (isFrontOpt == TRUE) {
+			save_btn.EnableWindow(!isClick);
+			read_btn.EnableWindow(!isClick);
+			record_btn.EnableWindow(!isClick);
 		}
 	}
 	else if (nHotKeyId == 0x126) {
 		if (start_watch == FALSE) return;
 		CPoint ptCursor;
 		GetCursorPos(&ptCursor);//获取鼠标位置
+		int ptScreenX = ptCursor.x;
+		int ptScreenY = ptCursor.y;
 
 		CWnd* hWnd = WindowFromPoint(ptCursor); // 获取窗口句柄
-
+		
 		::ScreenToClient(hWnd->m_hWnd, &ptCursor);
 		// 窗口标题
 		CString str;
@@ -790,6 +829,8 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		PointInfo pI;
 		pI.x = ptCursor.x;
 		pI.y = ptCursor.y;
+		pI.screenX = ptScreenX;
+		pI.screenY = ptScreenY;
 		pI.hwnd = hWnd->m_hWnd;
 		pI.event_type = 2;
 		pI.gap = 0;
@@ -801,7 +842,27 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 
 		pointInfo.push_back(pI);
 	}
-	
+	else if (nHotKeyId == 0x128) {
+		if (!isFrontOpt) return;
+		if (isClick) return;
+		if (!isRecording) {
+			g_pThis = this;
+			record_btn.SetWindowTextW(_T("停止 Ctrl+R"));
+			g_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, GetModuleHandle(NULL), 0);
+			g_hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, GetModuleHandle(NULL), 0);
+			if (!g_hMouseHook || !g_hKeyboardHook) {
+				AfxMessageBox(_T("钩子安装失败！"));
+			}
+		}
+		else {
+			g_pThis = nullptr;
+			record_btn.SetWindowTextW(_T("录制 Ctrl+R"));
+			if (g_hMouseHook) UnhookWindowsHookEx(g_hMouseHook);
+			if (g_hKeyboardHook) UnhookWindowsHookEx(g_hKeyboardHook);
+			g_hMouseHook = g_hKeyboardHook = NULL;
+		}
+		isRecording = !isRecording;
+	}
 	CDialogEx::OnHotKey(nHotKeyId, nKey1, nKey2);
 }
 
@@ -932,14 +993,12 @@ void CiClickDlg::OnLButtonDown(UINT nFlags, CPoint point)
 
 		}
 	}
-
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
 
 void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	if (isDown==TRUE) {
-	
 		if (GetCapture() == this) {
 			ReleaseCapture();
 		}
@@ -949,6 +1008,8 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		CPoint ptCursor;
 		GetCursorPos(&ptCursor);//获取鼠标位置
 		CWnd* hWnd = WindowFromPoint(ptCursor); // 获取窗口句柄
+		int ptScreenX = ptCursor.x;
+		int ptScreenY = ptCursor.y;
 
 		// 窗口标题
 		CString str;
@@ -960,6 +1021,7 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		hwnd_ipt.SetWindowTextW(strHandle);
 
 		::ScreenToClient(hWnd->m_hWnd, &ptCursor);
+
 		CString x, y;
 		x.Format(_T("%d"), ptCursor.x);
 		y.Format(_T("%d"), ptCursor.y);
@@ -982,6 +1044,8 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		PointInfo pI;
 		pI.x = ptCursor.x;
 		pI.y = ptCursor.y;
+		pI.screenX = ptScreenX;
+		pI.screenY = ptScreenY;
 		pI.hwnd = hWnd->m_hWnd;
 		pI.event_type = Event_Type;
 		pI.title = str;
@@ -1003,7 +1067,6 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 			CWnd* mainWnd = AfxGetMainWnd();
 			mainWnd->ShowWindow(SW_RESTORE);
 		}
-
 	}
 	CDialogEx::OnLButtonUp(nFlags, point);
 }
@@ -1221,7 +1284,8 @@ void CiClickDlg::SaveInitConfig(CString Section,CString Key, CString Value) {
 	strDesktopPath += "\\";
 	strDesktopPath += "config";
 	strDesktopPath += "_";
-	strDesktopPath += strTime;
+	//strDesktopPath += strTime;
+	strDesktopPath += _T("Asd");
 	strDesktopPath += ".ini";
 
 	if (!strDesktopPath.IsEmpty()) {
@@ -1435,12 +1499,7 @@ void CiClickDlg::OnBnClickedButton2()
 			CString Gap = ReadSection(filePath, Section, _T("Gap"));
 			CString Title = ReadSection(filePath, Section, _T("Title"));
 			CString Hwnd = ReadSection(filePath, Section, _T("Hwnd"));
-		/*	HWND hWnd = ::FindWindow(Class_Name, Title);
-			if (hWnd) {
-				CString str;
-				str.Format(_T("%p"), hWnd);
-				MessageBox(str);
-			}*/
+
 	
 
 			point.x = (UINT)_ttoi(X);
@@ -1497,4 +1556,189 @@ void CiClickDlg::SetTimes1()
 		str.Format(_T("%d"), timesModal.times);
 		list.SetItemText(select_row, 6, str);
 	}
+}
+
+INT64 timeTamp = 0;
+
+
+// 获取时间戳
+__int64 GetMillisecondTimestamp() {
+	SYSTEMTIME sysTime;
+	::GetLocalTime(&sysTime); // 获取本地时间（含毫秒）
+	CTime curTime(sysTime);   // 转换为CTime对象
+	__int64 seconds = curTime.GetTime(); // 秒级部分
+	return seconds * 1000 + sysTime.wMilliseconds; // 组合为毫秒级时间戳
+}
+
+// 捕获鼠标事件
+void ListAndVectorInstert(int x,int y,int mouse_key,int scrollDistance=0) {
+	int iRow = g_pThis->list.GetItemCount(); //获取行数
+
+
+	CString strX, strY;
+	strX.Format(_T("%d"), x);
+	strY.Format(_T("%d"), y);
+
+	CString eventTypeStr;
+
+
+	if (mouse_key == 1) {
+		eventTypeStr = L"左键单击";
+	}
+	else if(mouse_key == 2) {
+		eventTypeStr = L"左键双击";
+	}
+	else if(mouse_key == 3) {
+		eventTypeStr = L"滚轮上滚";
+	}
+	else if(mouse_key == 4) {
+		eventTypeStr = L"滚轮下滚";
+	}
+	else if(mouse_key == 5) {
+		eventTypeStr = L"滚轮单击";
+	}
+	else if(mouse_key == 6) {
+		eventTypeStr = L"右键单击";
+	}
+	else if(mouse_key ==7) {
+		eventTypeStr = L"右键双击";
+	}
+	else if(mouse_key == 8) {
+		eventTypeStr = L"鼠标移动";
+	}
+	else if(mouse_key == 9) {
+		eventTypeStr = L"左键按下";
+	}
+	else if(mouse_key == 10) {
+		eventTypeStr = L"左键松开";
+	}
+	
+	
+	PointInfo pI;
+	INT64 nowTime = GetMillisecondTimestamp();
+	if (timeTamp) {
+		pI.gap = nowTime - timeTamp;
+	}
+	else {
+		pI.gap = 0;
+	}
+
+	g_pThis->list.InsertItem(iRow, strX);
+	g_pThis->list.SetItemText(iRow, 1, strY);
+	g_pThis->list.SetItemText(iRow, 2, L"鼠标");
+	g_pThis->list.SetItemText(iRow, 3, eventTypeStr);
+	g_pThis->list.SetItemText(iRow, 4, _T(""));
+
+	CString timeStr;
+	timeStr.Format(_T("%d"), pI.gap);
+	g_pThis->list.SetItemText(iRow, 5, timeStr);
+	g_pThis->list.SetItemText(iRow, 6, _T("1"));
+
+
+	pI.screenX = x;
+	pI.screenY = y;
+	pI.hwnd = NULL;
+	pI.event_type = 1;
+	pI.title = L"";
+	pI.times = 1;
+	pI.moust_key = mouse_key;
+	
+	timeTamp = nowTime;
+
+
+
+	//timeTamp = ;
+
+
+	pointInfo.push_back(pI);
+
+}
+
+LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
+	if (nCode >= HC_ACTION) { 
+		MSLLHOOKSTRUCT* pMouse = (MSLLHOOKSTRUCT*)lParam;   //pMouse->pt为屏幕坐标
+		
+		int x = pMouse->pt.x;
+		int y = pMouse->pt.y;
+		switch (wParam) {
+		case WM_MOUSEMOVE: {			// 鼠标移动
+			ListAndVectorInstert(x,y,8);
+			break;
+		}
+		case WM_LBUTTONDOWN: {			// 左键按下
+			ListAndVectorInstert(x, y,  9);
+			break;
+		}
+		case WM_RBUTTONDOWN:{			// 右键按下
+			ListAndVectorInstert(x, y, 13);
+			break;
+		}
+		case WM_MBUTTONDOWN:{			// 中键按下
+			ListAndVectorInstert(x, y,  11);
+			break;
+		}
+		case WM_LBUTTONUP: {			// 左键松开
+			ListAndVectorInstert(x, y, 10);
+			break;
+		}
+		case WM_RBUTTONUP: {			// 右键松开
+			ListAndVectorInstert(x, y, 14);
+			break;
+		}
+		case WM_MBUTTONUP: {			// 中键松开
+			ListAndVectorInstert(x, y,  12);
+			break;
+		}
+		case WM_MOUSEWHEEL:				// 滚轮滚动
+			// 处理滚轮：HIWORD(pMouse->mouseData)为滚动值
+			if (pMouse->mouseData > 0) {   // 上划
+				ListAndVectorInstert(x, y,  3, pMouse->mouseData);
+			}
+			else {							// 下划
+				ListAndVectorInstert(x, y,  4, pMouse->mouseData);
+			}
+			break;
+		}
+
+
+	}
+	return CallNextHookEx(g_hMouseHook, nCode, wParam, lParam);
+}
+
+// 键盘钩子处理函数（捕获按键）
+LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
+	if (nCode >= HC_ACTION) {
+		KBDLLHOOKSTRUCT* pKey = (KBDLLHOOKSTRUCT*)lParam;
+		if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
+			// 处理按键按下：pKey->vkCode为虚拟键码
+		}
+		else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
+			// 处理按键释放
+		}
+	}
+	return CallNextHookEx(g_hKeyboardHook, nCode, wParam, lParam);
+}
+
+
+void CiClickDlg::OnBnClickedButton4()
+{
+	if (!isRecording) {
+		g_pThis = this;
+		record_btn.SetWindowTextW(_T("停止 Ctrl+R"));
+		g_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, GetModuleHandle(NULL), 0);
+		g_hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, GetModuleHandle(NULL), 0);
+		if (!g_hMouseHook || !g_hKeyboardHook) {
+			AfxMessageBox(_T("钩子安装失败！"));
+		}
+		//SetCapture();
+	}
+	else {
+		g_pThis = nullptr;
+		record_btn.SetWindowTextW(_T("录制 Ctrl+R"));
+		if (g_hMouseHook) UnhookWindowsHookEx(g_hMouseHook);
+		if (g_hKeyboardHook) UnhookWindowsHookEx(g_hKeyboardHook);
+		g_hMouseHook = g_hKeyboardHook = NULL;
+		//ReleaseCapture();
+	}
+	isRecording = !isRecording;
 }

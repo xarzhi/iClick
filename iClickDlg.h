@@ -18,17 +18,42 @@ using namespace std;
 
 // 列表中单行数据结构体
 typedef struct PointInfo {
-	int x = 0;
-	int y = 0;
+	int x = 0;			// 相对于 控件 窗口的 x 坐标
+	int y = 0;			// 相对于 控件 窗口的 y 坐标
+	int screenX = 0;	// 相对于 电脑 窗口的 x 坐标y
+	int screenY = 0;	// 相对于 电脑 窗口的 x 坐标
 	HWND hwnd = NULL;	// 窗口句柄
 	CString className;  // 窗口类名
 	int event_type = 1;	// 事件类型        1：鼠标事件   2：键盘事件
-	int moust_key = 1;	// 鼠标点击类型    1: 左键单机   2：左键双击  3：滚轮上滚  4：滚轮下滚 5：滚轮单击 6：右键单击 7：右键双击
-	UINT gap = 20;
-	UINT times = 1;
-	CString title;
-	HotKeyInfo hotKeyInfo;
+	int moust_key = 1;	// 鼠标点击类型		说明在下方 
+	UINT gap = 20;		// 单次操作前的延迟
+	UINT times = 1;		// 单次操作执行次数
+	int scrollDistance = 0;   // 滚轮滚动距离
+	CString title;		// 窗口标题
+	HotKeyInfo hotKeyInfo;	// 键盘信息
 }PointInfo;
+
+
+
+/*  moust_key
+	1: 左键单机   
+	2：左键双击  
+	3：滚轮上滚  
+	4：滚轮下滚 
+	5：滚轮单击 
+	6：右键单击 
+	7：右键双击 
+	8：鼠标移动 
+	9：左键按下 
+	10：左键松开
+	11：中键按下 
+	12：中键松开
+	13：右键按下 
+	14：右键松开
+*/
+
+
+
 
 
 // 总体配置结构体
@@ -91,10 +116,8 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
-	afx_msg void OnNMOutofmemoryHotkey1(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnEnChangeEdit2();
 	afx_msg void OnBnClickedCheck2();
-	afx_msg void OnStnClickedStaticPic();
 	CListCtrl list;
 	afx_msg void OnBnClickedButton1();
 	afx_msg void OnBnClickedCheck3();
@@ -185,5 +208,11 @@ public:
 	CButton read_btn;
 	CButton save_btn;
 	CButton record_btn;
+	afx_msg void OnBnClickedButton4();
+	BOOL isRecording = FALSE;
+	HHOOK g_hMouseHook = NULL;
+	HHOOK g_hKeyboardHook = NULL;
+	 /* LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
+	  LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);*/
 };
 
