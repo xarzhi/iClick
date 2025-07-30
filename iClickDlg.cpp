@@ -32,6 +32,9 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 HHOOK g_hMouseHook = NULL;
 HHOOK g_hKeyboardHook = NULL;
 CiClickDlg* g_pThis = nullptr;
+INT64 timeTamp = 0;
+
+
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -417,14 +420,17 @@ UINT FrontThreadOption(LPVOID pParam) {
 						INPUT input = { 0 };
 						input.type = INPUT_MOUSE;
 						input.mi.dwFlags = MOUSEEVENTF_WHEEL;
-						input.mi.mouseData = 120; // 正值表示向上滚动
+						input.mi.mouseData = point.scrollDistance? point.scrollDistance:120; // 正值表示向上滚动
+						
 						SendInput(1, &input, sizeof(INPUT));
 					}
 					else if (point.moust_key == 4) {// 滚轮下滑
 						INPUT input = { 0 };
 						input.type = INPUT_MOUSE;
 						input.mi.dwFlags = MOUSEEVENTF_WHEEL;
-						input.mi.mouseData = -120; // 正值表示向上滚动
+
+
+						input.mi.mouseData = point.scrollDistance * -1 ? point.scrollDistance : -120; // 正值表示向上滚动
 						SendInput(1, &input, sizeof(INPUT));
 					}
 					else if (point.moust_key == 5) {// 滚轮点击
@@ -463,6 +469,38 @@ UINT FrontThreadOption(LPVOID pParam) {
 
 						SendInput(1, inputs, sizeof(INPUT));
 					}
+					else if (point.moust_key == 11) {	// 中键按下
+						INPUT inputs[1] = { 0 };
+
+						inputs[0].type = INPUT_MOUSE;
+						inputs[0].mi.dwFlags = MOUSEEVENTF_MIDDLEDOWN;
+
+						SendInput(1, inputs, sizeof(INPUT));
+					}
+					else if (point.moust_key == 12) { 	// 中键释放
+						INPUT inputs[1] = { 0 };
+
+						inputs[0].type = INPUT_MOUSE;
+						inputs[0].mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
+
+						SendInput(1, inputs, sizeof(INPUT));
+					}
+					else if (point.moust_key == 13) {   // 右键按下
+						INPUT inputs[1] = { 0 };
+
+						inputs[0].type = INPUT_MOUSE;
+						inputs[0].mi.dwFlags = MOUSEEVENTF_RIGHTDOWN;  
+
+						SendInput(1, inputs, sizeof(INPUT));
+					}
+					else if (point.moust_key == 14) {	 // 右键释放
+						INPUT inputs[1] = { 0 };
+						inputs[0].type = INPUT_MOUSE;
+						inputs[0].mi.dwFlags = MOUSEEVENTF_RIGHTUP;    
+
+						SendInput(1, inputs, sizeof(INPUT));
+					}
+				
 				}
 				else if (point.event_type == 2) {			// 键盘事件
 					std::vector<INPUT> inputs1;
@@ -860,6 +898,8 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 			if (g_hMouseHook) UnhookWindowsHookEx(g_hMouseHook);
 			if (g_hKeyboardHook) UnhookWindowsHookEx(g_hKeyboardHook);
 			g_hMouseHook = g_hKeyboardHook = NULL;
+			timeTamp = 0;
+
 		}
 		isRecording = !isRecording;
 	}
@@ -1279,13 +1319,12 @@ void CiClickDlg::SaveInitConfig(CString Section,CString Key, CString Value) {
 
 
 	CTime currentTime = CTime::GetCurrentTime(); 
-	CString strTime = currentTime.Format(_T("%Y-%m-%d_%H-%M-%S"));
+	CString strTime = currentTime.Format(_T("%Y-%m-%d"));
 
 	strDesktopPath += "\\";
 	strDesktopPath += "config";
 	strDesktopPath += "_";
-	//strDesktopPath += strTime;
-	strDesktopPath += _T("Asd");
+	strDesktopPath += strTime;
 	strDesktopPath += ".ini";
 
 	if (!strDesktopPath.IsEmpty()) {
@@ -1558,7 +1597,6 @@ void CiClickDlg::SetTimes1()
 	}
 }
 
-INT64 timeTamp = 0;
 
 
 // 获取时间戳
@@ -1645,11 +1683,6 @@ void ListAndVectorInstert(int x,int y,int mouse_key,int scrollDistance=0) {
 	
 	timeTamp = nowTime;
 
-
-
-	//timeTamp = ;
-
-
 	pointInfo.push_back(pI);
 
 }
@@ -1691,11 +1724,13 @@ LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 		}
 		case WM_MOUSEWHEEL:				// 滚轮滚动
 			// 处理滚轮：HIWORD(pMouse->mouseData)为滚动值
-			if (pMouse->mouseData > 0) {   // 上划
-				ListAndVectorInstert(x, y,  3, pMouse->mouseData);
+			int scrollDelta = GET_WHEEL_DELTA_WPARAM(pMouse->mouseData);
+			
+			if (scrollDelta > 0) {   // 上划
+				ListAndVectorInstert(x, y,  3, scrollDelta);
 			}
 			else {							// 下划
-				ListAndVectorInstert(x, y,  4, pMouse->mouseData);
+				ListAndVectorInstert(x, y,  4, scrollDelta);
 			}
 			break;
 		}
@@ -1722,7 +1757,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
 void CiClickDlg::OnBnClickedButton4()
 {
-	if (!isRecording) {
+	if (!isRecording) {				// 开始录制
 		g_pThis = this;
 		record_btn.SetWindowTextW(_T("停止 Ctrl+R"));
 		g_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, GetModuleHandle(NULL), 0);
@@ -1730,15 +1765,14 @@ void CiClickDlg::OnBnClickedButton4()
 		if (!g_hMouseHook || !g_hKeyboardHook) {
 			AfxMessageBox(_T("钩子安装失败！"));
 		}
-		//SetCapture();
-	}
-	else {
+	}	
+	else {					// 停止录制
 		g_pThis = nullptr;
 		record_btn.SetWindowTextW(_T("录制 Ctrl+R"));
 		if (g_hMouseHook) UnhookWindowsHookEx(g_hMouseHook);
 		if (g_hKeyboardHook) UnhookWindowsHookEx(g_hKeyboardHook);
 		g_hMouseHook = g_hKeyboardHook = NULL;
-		//ReleaseCapture();
+		timeTamp = 0;
 	}
 	isRecording = !isRecording;
 }
