@@ -72,7 +72,9 @@ void CiClickDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_HOTKEY2, keybd_hotkey_ipt);
 	DDX_Control(pDX, IDC_BUTTON2, read_btn);
 	DDX_Control(pDX, IDC_BUTTON3, save_btn);
-	DDX_Control(pDX, IDC_BUTTON4, record_btn);
+	//DDX_Control(pDX, IDC_BUTTON4, record_btn);
+	DDX_Control(pDX, IDC_HOTKEY4, record_ipt);
+	DDX_Control(pDX, IDC_STATIC_RECORD, record_text);
 }
 
 BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
@@ -123,7 +125,6 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON2, &CiClickDlg::OnBnClickedButton2)
 	ON_COMMAND(ID_32795, &CiClickDlg::SetTimes2)
 	ON_COMMAND(ID_32796, &CiClickDlg::SetTimes1)
-	ON_BN_CLICKED(IDC_BUTTON4, &CiClickDlg::OnBnClickedButton4)
 END_MESSAGE_MAP()
 
 
@@ -198,7 +199,6 @@ BOOL CiClickDlg::OnInitDialog()
 	start_hotkey.SetHotKey(VK_F8,NULL);
 	RegisterHotKey(m_hWnd, 0x124, NULL, VK_F8);
 
-	RegisterHotKey(m_hWnd, 0x128, MOD_CONTROL, 'R');
 
 	random_check.SetCheck(isRandomClick);
 
@@ -240,7 +240,11 @@ BOOL CiClickDlg::OnInitDialog()
 
 	save_btn.EnableWindow(FALSE);
 	read_btn.EnableWindow(FALSE);
-	record_btn.EnableWindow(FALSE);
+
+	record_ipt.SetHotKey('R', MOD_CONTROL);
+	RegisterHotKey(m_hWnd, 0x128, MOD_CONTROL, 'R');
+
+
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -366,6 +370,36 @@ void RightClick() {
 }
 
 
+// 发送单个键盘事件
+enum class KeyEventType {
+	KEY_DOWN,
+	KEY_UP
+};
+void SendKeyEvent(UINT vkCode, KeyEventType eventType) {
+	INPUT input = { 0 };
+	input.type = INPUT_KEYBOARD;
+
+	// 设置键盘事件
+	input.ki.wVk = vkCode;         // 虚拟键码
+	input.ki.dwFlags = 0;          // 默认按键按下
+	input.ki.dwFlags = eventType == KeyEventType::KEY_UP? KEYEVENTF_KEYUP:0; 
+
+	// 特殊键处理（需要设置扩展键标志）
+	//if (vkCode == VK_RCONTROL || vkCode == VK_RMENU || vkCode == VK_RSHIFT ||
+	//	vkCode == VK_NUMLOCK || vkCode == VK_RWIN ||
+	//	vkCode == VK_INSERT || vkCode == VK_DELETE ||
+	//	vkCode == VK_HOME || vkCode == VK_END ||
+	//	vkCode == VK_PRIOR || vkCode == VK_NEXT ||
+	//	vkCode == VK_LEFT || vkCode == VK_RIGHT ||
+	//	vkCode == VK_UP || vkCode == VK_DOWN ||
+	//	vkCode == VK_DIVIDE) {
+	//	input.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY; // 扩展键标志
+	//}
+
+	// 发送事件
+	SendInput(1, &input, sizeof(INPUT));
+}
+
 // 前台事件多线程
 UINT FrontThreadOption(LPVOID pParam) {
 	CiClickDlg* Wnd = (CiClickDlg*)pParam;
@@ -390,8 +424,6 @@ UINT FrontThreadOption(LPVOID pParam) {
 			}
 
 	
-
-
 			// 设置模糊点击
 			UINT Radius = Wnd->Random_Radius;
 			int x, y;
@@ -495,6 +527,7 @@ UINT FrontThreadOption(LPVOID pParam) {
 					}
 					else if (point.moust_key == 14) {	 // 右键释放
 						INPUT inputs[1] = { 0 };
+
 						inputs[0].type = INPUT_MOUSE;
 						inputs[0].mi.dwFlags = MOUSEEVENTF_RIGHTUP;    
 
@@ -503,40 +536,47 @@ UINT FrontThreadOption(LPVOID pParam) {
 				
 				}
 				else if (point.event_type == 2) {			// 键盘事件
-					std::vector<INPUT> inputs1;
-					std::vector<INPUT> inputs2;
+
+					if (point.keybd_key ==  1) {
+						std::vector<INPUT> inputs1;
+						std::vector<INPUT> inputs2;
+
+						DWORD modifiers = point.hotKeyInfo.wModifiers;
+
+						// 1. 按下修饰键（如果存在）
+						if (modifiers & HOTKEYF_CONTROL) inputs1.push_back({ INPUT_KEYBOARD, { VK_CONTROL } });
+						if (modifiers & HOTKEYF_SHIFT) inputs1.push_back({ INPUT_KEYBOARD, { VK_SHIFT } });
+						if (modifiers & HOTKEYF_ALT) inputs1.push_back({ INPUT_KEYBOARD, { VK_MENU } });
+						// 2. 按下主键
+						INPUT down;
+						down.type = INPUT_KEYBOARD;
+						down.ki.wVk = point.hotKeyInfo.wVirtualKey;
+						down.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
+						down.ki.dwFlags = KEYEVENTF_SCANCODE;  // 按键按下
+						inputs2.push_back(down);
 
 
-					DWORD modifiers = point.hotKeyInfo.wModifiers;
+						INPUT up;
+						up.type = INPUT_KEYBOARD;
+						up.ki.wVk = point.hotKeyInfo.wVirtualKey;
+						up.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
+						up.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;  // 按键按下
+						inputs2.push_back(up);
 
-					// 1. 按下修饰键（如果存在）
-					if (modifiers & HOTKEYF_CONTROL) inputs1.push_back({ INPUT_KEYBOARD, { VK_CONTROL } });
-					if (modifiers & HOTKEYF_SHIFT) inputs1.push_back({ INPUT_KEYBOARD, { VK_SHIFT } });
-					if (modifiers & HOTKEYF_ALT) inputs1.push_back({ INPUT_KEYBOARD, { VK_MENU } });
-					// 2. 按下主键
-					INPUT down;
-					down.type = INPUT_KEYBOARD;
-					down.ki.wVk = point.hotKeyInfo.wVirtualKey;
-					down.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
-					down.ki.dwFlags = KEYEVENTF_SCANCODE;  // 按键按下
-					inputs2.push_back(down);
+						if (modifiers & HOTKEYF_ALT) inputs2.push_back({ INPUT_KEYBOARD, { VK_MENU ,KEYEVENTF_KEYUP} });
+						if (modifiers & HOTKEYF_SHIFT) inputs2.push_back({ INPUT_KEYBOARD, { VK_SHIFT ,KEYEVENTF_KEYUP} });
+						if (modifiers & HOTKEYF_CONTROL) inputs2.push_back({ INPUT_KEYBOARD, { VK_CONTROL ,KEYEVENTF_KEYUP} });
 
-
-					INPUT up;
-					up.type = INPUT_KEYBOARD;
-					up.ki.wVk = point.hotKeyInfo.wVirtualKey;
-					up.ki.wScan = MapVirtualKey(point.hotKeyInfo.wVirtualKey, MAPVK_VK_TO_VSC);
-					up.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;  // 按键按下
-					inputs2.push_back(up);
-
-					if (modifiers & HOTKEYF_ALT) inputs2.push_back({ INPUT_KEYBOARD, { VK_MENU ,KEYEVENTF_KEYUP} });
-					if (modifiers & HOTKEYF_SHIFT) inputs2.push_back({ INPUT_KEYBOARD, { VK_SHIFT ,KEYEVENTF_KEYUP} });
-					if (modifiers & HOTKEYF_CONTROL) inputs2.push_back({ INPUT_KEYBOARD, { VK_CONTROL ,KEYEVENTF_KEYUP} });
-
-					SendInput(static_cast<UINT>(inputs1.size()), inputs1.data(), sizeof(INPUT));
-					Sleep(8);
-					SendInput(static_cast<UINT>(inputs2.size()), inputs2.data(), sizeof(INPUT));
-
+						SendInput(static_cast<UINT>(inputs1.size()), inputs1.data(), sizeof(INPUT));
+						Sleep(8);
+						SendInput(static_cast<UINT>(inputs2.size()), inputs2.data(), sizeof(INPUT));
+					}
+					else if(point.keybd_key == 2){
+						SendKeyEvent(point.keyCode, KeyEventType::KEY_DOWN);
+					}
+					else if (point.keybd_key == 3) {
+						SendKeyEvent(point.keyCode, KeyEventType::KEY_UP);
+					}
 				}
 				Wnd->gap > 0 ? Sleep(Wnd->gap) : NULL;		// 单次操作间隔
 
@@ -712,7 +752,7 @@ void CiClickDlg::OnBnClickedButton1()
 	if (isFrontOpt == TRUE) {
 		save_btn.EnableWindow(!isClick);
 		read_btn.EnableWindow(!isClick);
-		record_btn.EnableWindow(!isClick);
+		//record_btn.EnableWindow(!isClick);
 	}
 
 }
@@ -830,7 +870,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		if (isFrontOpt == TRUE) {
 			save_btn.EnableWindow(!isClick);
 			read_btn.EnableWindow(!isClick);
-			record_btn.EnableWindow(!isClick);
+			//record_btn.EnableWindow(!isClick);
 		}
 	}
 	else if (nHotKeyId == 0x126) {
@@ -880,25 +920,30 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 
 		pointInfo.push_back(pI);
 	}
-	else if (nHotKeyId == 0x128) {
-		if (!isFrontOpt) return;
+	else if (nHotKeyId == 0x128) {			// 录制脚本功能
+		if (!isFrontOpt) {
+			MessageBox(L"只可录制前台操作");
+			return;
+		};
 		if (isClick) return;
 		if (!isRecording) {
+			Sleep(500);
 			g_pThis = this;
-			record_btn.SetWindowTextW(_T("停止 Ctrl+R"));
 			g_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, GetModuleHandle(NULL), 0);
 			g_hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, GetModuleHandle(NULL), 0);
 			if (!g_hMouseHook || !g_hKeyboardHook) {
 				AfxMessageBox(_T("钩子安装失败！"));
 			}
+			record_text.SetWindowTextW(_T("停止录制"));
+
 		}
 		else {
 			g_pThis = nullptr;
-			record_btn.SetWindowTextW(_T("录制 Ctrl+R"));
 			if (g_hMouseHook) UnhookWindowsHookEx(g_hMouseHook);
 			if (g_hKeyboardHook) UnhookWindowsHookEx(g_hKeyboardHook);
 			g_hMouseHook = g_hKeyboardHook = NULL;
 			timeTamp = 0;
+			record_text.SetWindowTextW(_T("开始录制"));
 
 		}
 		isRecording = !isRecording;
@@ -1066,6 +1111,8 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		x.Format(_T("%d"), ptCursor.x);
 		y.Format(_T("%d"), ptCursor.y);
 		int iRow = list.GetItemCount(); //获取行数
+		PointInfo pI;
+
 
 		list.InsertItem(iRow, x);
 		list.SetItemText(iRow, 1, y);
@@ -1076,12 +1123,13 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		else if (Event_Type == 2) {
 			list.SetItemText(iRow, 2, L"键盘");
 			list.SetItemText(iRow, 3, L"");
+			pI.keybd_key = 1;
+
 		}
 		list.SetItemText(iRow, 4, str);
 		list.SetItemText(iRow, 5, _T("0"));
 		list.SetItemText(iRow, 6, _T("1"));
 
-		PointInfo pI;
 		pI.x = ptCursor.x;
 		pI.y = ptCursor.y;
 		pI.screenX = ptScreenX;
@@ -1231,7 +1279,7 @@ void CiClickDlg::OnBnClickedCheck5()
 	isFrontOpt = isfront_check.GetCheck();
 	save_btn.EnableWindow(isFrontOpt);
 	read_btn.EnableWindow(isFrontOpt);
-	record_btn.EnableWindow(isFrontOpt);
+	//record_btn.EnableWindow(isFrontOpt);
 }
 
 void CiClickDlg::OnEnChangeEdit6()
@@ -1740,39 +1788,152 @@ LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 	return CallNextHookEx(g_hMouseHook, nCode, wParam, lParam);
 }
 
+
+
+
+CString VirtualKeyCodeToCString(DWORD vkCode) {
+	// 完整键码映射表（包括所有修饰键的左右版本）
+	static const std::vector<std::pair<UINT, CString>> nonCharKeys = {
+		{VK_LBUTTON, L"Left Mouse"}, {VK_RBUTTON, L"Right Mouse"},
+		{VK_CANCEL, L"Break"}, {VK_MBUTTON, L"Middle Mouse"},
+		{VK_XBUTTON1, L"XButton1"}, {VK_XBUTTON2, L"XButton2"},
+		{VK_BACK, L"Backspace"}, {VK_TAB, L"Tab"},
+		{VK_CLEAR, L"Clear"}, {VK_RETURN, L"Enter"},
+		{VK_SHIFT, L"Shift"}, {VK_CONTROL, L"Ctrl"},
+		{VK_MENU, L"Alt"}, {VK_PAUSE, L"Pause"},
+		{VK_CAPITAL, L"Caps Lock"}, {VK_ESCAPE, L"Esc"},
+		{VK_SPACE, L"Space"}, {VK_PRIOR, L"Page Up"},
+		{VK_NEXT, L"Page Down"}, {VK_END, L"End"},
+		{VK_HOME, L"Home"}, {VK_LEFT, L"Left"},
+		{VK_UP, L"Up"}, {VK_RIGHT, L"Right"},
+		{VK_DOWN, L"Down"}, {VK_SELECT, L"Select"},
+		{VK_PRINT, L"Print"}, {VK_EXECUTE, L"Execute"},
+		{VK_SNAPSHOT, L"Print Screen"}, {VK_INSERT, L"Insert"},
+		{VK_DELETE, L"Delete"}, {VK_HELP, L"Help"},
+		{VK_LWIN, L"Left Win"}, {VK_RWIN, L"Right Win"},
+		{VK_APPS, L"Apps"}, {VK_SLEEP, L"Sleep"},
+		{VK_NUMPAD0, L"Num 0"}, {VK_NUMPAD1, L"Num 1"},
+		{VK_NUMPAD2, L"Num 2"}, {VK_NUMPAD3, L"Num 3"},
+		{VK_NUMPAD4, L"Num 4"}, {VK_NUMPAD5, L"Num 5"},
+		{VK_NUMPAD6, L"Num 6"}, {VK_NUMPAD7, L"Num 7"},
+		{VK_NUMPAD8, L"Num 8"}, {VK_NUMPAD9, L"Num 9"},
+		{VK_MULTIPLY, L"*"}, {VK_ADD, L"+"},
+		{VK_SEPARATOR, L"Separator"}, {VK_SUBTRACT, L"-"},
+		{VK_DECIMAL, L"."}, {VK_DIVIDE, L"/"},
+		{VK_F1, L"F1"}, {VK_F2, L"F2"}, {VK_F3, L"F3"},
+		{VK_F4, L"F4"}, {VK_F5, L"F5"}, {VK_F6, L"F6"},
+		{VK_F7, L"F7"}, {VK_F8, L"F8"}, {VK_F9, L"F9"},
+		{VK_F10, L"F10"}, {VK_F11, L"F11"}, {VK_F12, L"F12"},
+		{VK_F13, L"F13"}, {VK_F14, L"F14"}, {VK_F15, L"F15"},
+		{VK_F16, L"F16"}, {VK_F17, L"F17"}, {VK_F18, L"F18"},
+		{VK_F19, L"F19"}, {VK_F20, L"F20"}, {VK_F21, L"F21"},
+		{VK_F22, L"F22"}, {VK_F23, L"F23"}, {VK_F24, L"F24"},
+		{VK_NUMLOCK, L"Num Lock"}, {VK_SCROLL, L"Scroll Lock"},
+		{VK_LSHIFT, L"Left Shift"}, {VK_RSHIFT, L"Right Shift"},
+		{VK_LCONTROL, L"Left Ctrl"}, {VK_RCONTROL, L"Right Ctrl"},
+		{VK_LMENU, L"Left Alt"}, {VK_RMENU, L"Right Alt"},
+		{VK_BROWSER_BACK, L"Browser Back"}, {VK_BROWSER_FORWARD, L"Browser Forward"},
+		{VK_BROWSER_REFRESH, L"Browser Refresh"}, {VK_BROWSER_STOP, L"Browser Stop"},
+		{VK_BROWSER_SEARCH, L"Browser Search"}, {VK_BROWSER_FAVORITES, L"Browser Favorites"},
+		{VK_BROWSER_HOME, L"Browser Home"}, {VK_VOLUME_MUTE, L"Volume Mute"},
+		{VK_VOLUME_DOWN, L"Volume Down"}, {VK_VOLUME_UP, L"Volume Up"},
+		{VK_MEDIA_NEXT_TRACK, L"Next Track"}, {VK_MEDIA_PREV_TRACK, L"Prev Track"},
+		{VK_MEDIA_STOP, L"Stop Media"}, {VK_MEDIA_PLAY_PAUSE, L"Play/Pause"},
+		{VK_LAUNCH_MAIL, L"Launch Mail"}, {VK_LAUNCH_MEDIA_SELECT, L"Media Select"},
+		{VK_LAUNCH_APP1, L"App1"}, {VK_LAUNCH_APP2, L"App2"},
+		{VK_OEM_1, L";"}, {VK_OEM_PLUS, L"="}, {VK_OEM_COMMA, L","},
+		{VK_OEM_MINUS, L"-"}, {VK_OEM_PERIOD, L"."}, {VK_OEM_2, L"/"},
+		{VK_OEM_3, L"`"}, {VK_OEM_4, L"["}, {VK_OEM_5, L"\\"},
+		{VK_OEM_6, L"]"}, {VK_OEM_7, L"'"}, {VK_OEM_8, L"OEM8"},
+		{VK_OEM_102, L"OEM102"}, {VK_PROCESSKEY, L"Process Key"},
+		{VK_ATTN, L"Attn"}, {VK_CRSEL, L"CrSel"}, {VK_EXSEL, L"ExSel"},
+		{VK_EREOF, L"Erase EOF"}, {VK_PLAY, L"Play"}, {VK_ZOOM, L"Zoom"},
+		{VK_NONAME, L"NoName"}, {VK_PA1, L"PA1"}, {VK_OEM_CLEAR, L"Clear"}
+	};
+
+	// 在非字符键映射表中查找
+	for (const auto& key : nonCharKeys) {
+		if (vkCode == key.first) {
+			return key.second;
+		}
+	}
+
+	// 处理字符键
+	BYTE keyboardState[256] = { 0 };
+	GetKeyboardState(keyboardState);
+
+	wchar_t charBuffer[5] = { 0 };
+	int result = ToUnicode(vkCode, 0, keyboardState, charBuffer, 4, 0);
+
+	if (result > 0) {
+		return CString(charBuffer);
+	}
+
+	// 未知键码：返回十六进制格式
+	CString hexStr;
+	hexStr.Format(L"0x%02X", vkCode);
+	return hexStr;
+}
+
+// 捕获键盘事件
+void ListAndVectorInstertKeyBd(int x, int y, DWORD keyCode, BOOL isDown) {
+	int iRow = g_pThis->list.GetItemCount(); //获取行数
+
+	CString strX, strY;
+	strX.Format(_T("%d"), x);
+	strY.Format(_T("%d"), y);
+
+
+	PointInfo pI;
+	INT64 nowTime = GetMillisecondTimestamp();
+	if (timeTamp) {
+		pI.gap = nowTime - timeTamp;
+	}
+	else {
+		pI.gap = 0;
+	}
+
+	CString keyStr = VirtualKeyCodeToCString(keyCode);
+	CString downStr = keyStr + _T("按下");
+	CString upStr = keyStr + _T("松开");
+
+	g_pThis->list.InsertItem(iRow, strX);
+	g_pThis->list.SetItemText(iRow, 1, strY);
+	g_pThis->list.SetItemText(iRow, 2, L"键盘");
+	g_pThis->list.SetItemText(iRow, 3,  isDown ? downStr : upStr);
+	g_pThis->list.SetItemText(iRow, 4, _T(""));
+
+	CString timeStr;
+	timeStr.Format(_T("%d"), pI.gap);
+	g_pThis->list.SetItemText(iRow, 5, timeStr);
+	g_pThis->list.SetItemText(iRow, 6, _T("1"));
+
+	pI.screenX = x;
+	pI.screenY = y;
+	pI.keybd_key = isDown ? 2 : 3;
+	pI.hwnd = NULL;
+	pI.keyCode = keyCode;
+	pI.event_type = 2;
+	pI.title = L"";
+	pI.times = 1;
+	timeTamp = nowTime;
+	pointInfo.push_back(pI);
+}
+
 // 键盘钩子处理函数（捕获按键）
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
 	if (nCode >= HC_ACTION) {
+		CPoint ptCursor;
+		GetCursorPos(&ptCursor);//获取鼠标位置
 		KBDLLHOOKSTRUCT* pKey = (KBDLLHOOKSTRUCT*)lParam;
-		if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
-			// 处理按键按下：pKey->vkCode为虚拟键码
+		if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {				// 处理按键按下：pKey->vkCode为虚拟键码
+			ListAndVectorInstertKeyBd(ptCursor.x, ptCursor.y,pKey->vkCode,TRUE);
 		}
-		else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
-			// 处理按键释放
+		else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {  // 处理按键释放
+			ListAndVectorInstertKeyBd(ptCursor.x, ptCursor.y, pKey->vkCode, FALSE);
 		}
 	}
 	return CallNextHookEx(g_hKeyboardHook, nCode, wParam, lParam);
 }
 
 
-void CiClickDlg::OnBnClickedButton4()
-{
-	if (!isRecording) {				// 开始录制
-		g_pThis = this;
-		record_btn.SetWindowTextW(_T("停止 Ctrl+R"));
-		g_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, GetModuleHandle(NULL), 0);
-		g_hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, GetModuleHandle(NULL), 0);
-		if (!g_hMouseHook || !g_hKeyboardHook) {
-			AfxMessageBox(_T("钩子安装失败！"));
-		}
-	}	
-	else {					// 停止录制
-		g_pThis = nullptr;
-		record_btn.SetWindowTextW(_T("录制 Ctrl+R"));
-		if (g_hMouseHook) UnhookWindowsHookEx(g_hMouseHook);
-		if (g_hKeyboardHook) UnhookWindowsHookEx(g_hKeyboardHook);
-		g_hMouseHook = g_hKeyboardHook = NULL;
-		timeTamp = 0;
-	}
-	isRecording = !isRecording;
-}

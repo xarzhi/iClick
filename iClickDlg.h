@@ -24,8 +24,10 @@ typedef struct PointInfo {
 	int screenY = 0;	// 相对于 电脑 窗口的 x 坐标
 	HWND hwnd = NULL;	// 窗口句柄
 	CString className;  // 窗口类名
-	int event_type = 1;	// 事件类型        1：鼠标事件   2：键盘事件
+	int event_type = 1;	// 事件类型			1：鼠标事件   2：键盘事件
 	int moust_key = 1;	// 鼠标点击类型		说明在下方 
+	int keybd_key = 1;	// 键盘类型			1：组合按下松开	1：指定按键按下  2：指定按键松开 
+	DWORD keyCode = 0;
 	UINT gap = 20;		// 单次操作前的延迟
 	UINT times = 1;		// 单次操作执行次数
 	int scrollDistance = 0;   // 滚轮滚动距离
@@ -207,12 +209,13 @@ public:
 	afx_msg void SetTimes1();
 	CButton read_btn;
 	CButton save_btn;
-	CButton record_btn;
-	afx_msg void OnBnClickedButton4();
+	//CButton record_btn;
 	BOOL isRecording = FALSE;
 	HHOOK g_hMouseHook = NULL;
 	HHOOK g_hKeyboardHook = NULL;
 	 /* LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
 	  LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);*/
+	CHotKeyCtrl record_ipt;
+	CStatic record_text;
 };
 
