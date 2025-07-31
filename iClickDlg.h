@@ -145,6 +145,7 @@ public:
 	CEdit blurry_ipt;
 	afx_msg void OnHotKeyChanged(); // 声明处理函数
 	afx_msg void OnStartHotKeyChanged(); // 声明处理函数
+	afx_msg void OnRecordHotKeyChanged(); // 声明处理函数
 	CHotKeyCtrl start_hotkey;
 	afx_msg void OnNMRClickList1(NMHDR* pNMHDR, LRESULT* pResult); 
 	CMenu m_Menu;
@@ -204,18 +205,15 @@ public:
 	void SaveHotKey(CHotKeyCtrl& hotkey, CString Section);
 	CString ReadSection(CString path, CString Section, CString Key);
 	vector<CString> GetPointSections(CString iniPath);
-
 	afx_msg void SetTimes2();
 	afx_msg void SetTimes1();
 	CButton read_btn;
 	CButton save_btn;
-	//CButton record_btn;
 	BOOL isRecording = FALSE;
 	HHOOK g_hMouseHook = NULL;
 	HHOOK g_hKeyboardHook = NULL;
-	 /* LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
-	  LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);*/
 	CHotKeyCtrl record_ipt;
 	CStatic record_text;
+	BOOL isScript = FALSE;
 };
 

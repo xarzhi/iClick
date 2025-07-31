@@ -92,6 +92,7 @@ BEGIN_MESSAGE_MAP(CiClickDlg, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT5, &CiClickDlg::OnEnChangeEdit5)
 	ON_EN_CHANGE(IDC_HOTKEY3, &CiClickDlg::OnHotKeyChanged)
 	ON_EN_CHANGE(IDC_HOTKEY1, &CiClickDlg::OnStartHotKeyChanged)
+	ON_EN_CHANGE(IDC_HOTKEY4, &CiClickDlg::OnRecordHotKeyChanged)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST1, &CiClickDlg::OnNMRClickList1)
 	ON_COMMAND(ID_32773, &CiClickDlg::OnMenuRClick)
 	ON_COMMAND(ID_32774, &CiClickDlg::OnDeleteAll)
@@ -241,8 +242,9 @@ BOOL CiClickDlg::OnInitDialog()
 	save_btn.EnableWindow(FALSE);
 	read_btn.EnableWindow(FALSE);
 
-	record_ipt.SetHotKey('R', MOD_CONTROL);
-	RegisterHotKey(m_hWnd, 0x128, MOD_CONTROL, 'R');
+	record_ipt.SetHotKey(VK_F10, NULL);
+	RegisterHotKey(m_hWnd, 0x128, NULL, VK_F10);
+
 
 
 
@@ -385,16 +387,16 @@ void SendKeyEvent(UINT vkCode, KeyEventType eventType) {
 	input.ki.dwFlags = eventType == KeyEventType::KEY_UP? KEYEVENTF_KEYUP:0; 
 
 	// 特殊键处理（需要设置扩展键标志）
-	//if (vkCode == VK_RCONTROL || vkCode == VK_RMENU || vkCode == VK_RSHIFT ||
-	//	vkCode == VK_NUMLOCK || vkCode == VK_RWIN ||
-	//	vkCode == VK_INSERT || vkCode == VK_DELETE ||
-	//	vkCode == VK_HOME || vkCode == VK_END ||
-	//	vkCode == VK_PRIOR || vkCode == VK_NEXT ||
-	//	vkCode == VK_LEFT || vkCode == VK_RIGHT ||
-	//	vkCode == VK_UP || vkCode == VK_DOWN ||
-	//	vkCode == VK_DIVIDE) {
-	//	input.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY; // 扩展键标志
-	//}
+	if (vkCode == VK_RCONTROL || vkCode == VK_RMENU || vkCode == VK_RSHIFT ||
+		vkCode == VK_NUMLOCK || vkCode == VK_RWIN ||
+		vkCode == VK_INSERT || vkCode == VK_DELETE ||
+		vkCode == VK_HOME || vkCode == VK_END ||
+		vkCode == VK_PRIOR || vkCode == VK_NEXT ||
+		vkCode == VK_LEFT || vkCode == VK_RIGHT ||
+		vkCode == VK_UP || vkCode == VK_DOWN ||
+		vkCode == VK_DIVIDE) {
+		input.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY; // 扩展键标志
+	}
 
 	// 发送事件
 	SendInput(1, &input, sizeof(INPUT));
@@ -740,6 +742,10 @@ void CiClickDlg::OnBnClickedButton1()
 		start_btn.SetWindowTextW(_T("开始"));
 	} 
 	else {
+		if (isScript && !isFrontOpt) {
+			MessageBox(_T("录制和读取的脚本只适用于前台点击，请勾选前台点击"));
+			return;
+		}
 		isClick = TRUE;
 		if (isFrontOpt ==  TRUE) {
 			AfxBeginThread(FrontThreadOption, this);
@@ -857,6 +863,10 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 			isClick = FALSE;
 		}
 		else {
+			if (isScript&&!isFrontOpt) {
+				MessageBox(_T("录制和读取的脚本只适用于前台点击，请勾选前台点击"));
+				return;
+			}
 			isClick = TRUE;
 			if (isFrontOpt == TRUE) {
 				AfxBeginThread(FrontThreadOption, this);
@@ -921,6 +931,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		pointInfo.push_back(pI);
 	}
 	else if (nHotKeyId == 0x128) {			// 录制脚本功能
+
 		if (!isFrontOpt) {
 			MessageBox(L"只可录制前台操作");
 			return;
@@ -935,7 +946,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 				AfxMessageBox(_T("钩子安装失败！"));
 			}
 			record_text.SetWindowTextW(_T("停止录制"));
-
+			isScript = TRUE;
 		}
 		else {
 			g_pThis = nullptr;
@@ -977,6 +988,21 @@ void CiClickDlg::OnStartHotKeyChanged()
 	start_hotkey.GetHotKey(wVirtualKeyCode, wModifiers);
 	UnregisterHotKey(m_hWnd, 0x124); 
 	RegisterHotKey(m_hWnd, 0x124, wModifiers, wVirtualKeyCode);
+}
+// 开始结束点击快捷键值改变
+void CiClickDlg::OnRecordHotKeyChanged()
+{
+	WORD wVirtualKeyCode;
+	WORD wModifiers;
+	record_ipt.GetHotKey(wVirtualKeyCode, wModifiers);
+	if (wModifiers) {
+		MessageBox(L"录制快捷键带有修饰符会影响录制\n只可设置单个快捷键");
+		return;
+	}
+	else {
+		UnregisterHotKey(m_hWnd, 0x128);
+		RegisterHotKey(m_hWnd, 0x128, NULL, wVirtualKeyCode);
+	}
 }
 
 
@@ -1029,12 +1055,7 @@ void CiClickDlg::OnMenuRClick()
 	list.DeleteItem(select_row);
 }
 
-void CiClickDlg::OnDeleteAll()
-{
-	// TODO: 在此添加命令处理程序代码
-	pointInfo.clear(); // 删除所有元素
-	list.DeleteAllItems(); // 删除所有行
-}
+
 
 void CiClickDlg::OnBnClickedCheck1()
 {
@@ -1235,8 +1256,16 @@ void CiClickDlg::DeleteAllRow()
 	// 删除所有元素
 	pointInfo.clear(); // 删除所有元素
 	list.DeleteAllItems(); // 删除所有行
+	isScript = FALSE;
 }
 
+void CiClickDlg::OnDeleteAll()
+{
+	// TODO: 在此添加命令处理程序代码
+	pointInfo.clear(); // 删除所有元素
+	list.DeleteAllItems(); // 删除所有行
+	isScript = FALSE;
+}
 
 void CiClickDlg::OpenKeySelectDlg()
 {
@@ -1617,6 +1646,7 @@ void CiClickDlg::OnBnClickedButton2()
 			index++;
 		}
 
+		isScript = TRUE;
 		
 	}
 }
@@ -1894,6 +1924,10 @@ void ListAndVectorInstertKeyBd(int x, int y, DWORD keyCode, BOOL isDown) {
 	}
 
 	CString keyStr = VirtualKeyCodeToCString(keyCode);
+
+	OutputDebugString(keyStr);
+	OutputDebugString(L"\n");
+
 	CString downStr = keyStr + _T("按下");
 	CString upStr = keyStr + _T("松开");
 
