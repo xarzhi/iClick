@@ -22,7 +22,7 @@ jobs:
     - name: 编译项目
       shell: cmd
       run: |
-        msbuild iClick.sln /p:Configuration=Release /p:Platform=x86 /p:PlatformToolset=v143
+        msbuild iClick.sln /p:Configuration=Release /p:Platform=x86 /p:PlatformToolset=v145
         # 如果需要编译 x64 版本，请修改 Platform 为 x64
 
     - name: 上传打包产物
