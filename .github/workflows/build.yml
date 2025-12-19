@@ -20,13 +20,15 @@ jobs:
 
     - name: 编译项目
       shell: cmd
+      env:
+        LINK: "imm32.lib"
       run: |
         msbuild iClick.sln ^
         /p:Configuration=Release ^
         /p:Platform=x86 ^
         /p:PlatformToolset=v143 ^
-        /p:AdditionalDependencies="imm32.lib" ^
-        /p:CL_MPCount=4
+        /p:CL_MPCount=4 ^
+        /p:ForceImportBeforeCppTargets="$(MSBuildThisFileDirectory)GlobalConfig.props"
         
     - name: 上传打包产物
       uses: actions/upload-artifact@v4
