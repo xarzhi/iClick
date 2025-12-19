@@ -1,7 +1,6 @@
 name: Build MFC Project
 
 on:
-  #防止fork乱用action设置只能手动触发构建
   workflow_dispatch:
 
 jobs:
@@ -12,22 +11,30 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v4
 
+    - name: 安装 Visual Studio 编译组件 (包含 MFC)
+      # 确保环境中安装了 C++ 编译工具和 MFC 库
+      uses: microsoft/visual-studio-github-actions/.github/actions/setup-vs-components@main
+      with:
+        components: |
+          Microsoft.VisualStudio.Component.VC.ATLMFC
+          Microsoft.VisualStudio.Component.VC.Tools.x86.x64
+
     - name: 设置 MSBuild 环境
-      # 这个 Action 会自动寻找并配置 MSBuild 环境
       uses: microsoft/setup-msbuild@v2
 
-    - name: 还原 NuGet 包 (如果项目有使用)
+    - name: 还原 NuGet 包
       run: nuget restore iClick.sln
 
     - name: 编译项目
       shell: cmd
       run: |
-        msbuild iClick.sln /p:Configuration=Release /p:Platform=x86 /p:PlatformToolset=v145
-        # 如果需要编译 x64 版本，请修改 Platform 为 x64
-
+        msbuild iClick.sln /p:Configuration=Release /p:Platform=x86 /p:PlatformToolset=v143
+        
     - name: 上传打包产物
       uses: actions/upload-artifact@v4
       with:
         name: iClick-Release-Binary
-        # 根据你的输出路径调整，通常在 Release 文件夹下
-        path: Release/*.exe
+        # 建议检查你的项目输出目录，有些项目可能输出在 Release/ 或 iClick/Release/
+        path: |
+          Release/*.exe
+          Release/*.dll
