@@ -19,6 +19,7 @@
 #include <map>
 #include <cctype> // 用于字符串处理
 using namespace std;
+CString VirtualKeyCodeToCString(DWORD vkCode);
 
 
 
@@ -240,8 +241,8 @@ BOOL CiClickDlg::OnInitDialog()
 
 
 
-	save_btn.EnableWindow(FALSE);
-	read_btn.EnableWindow(FALSE);
+	save_btn.EnableWindow(TRUE);      // 显式启用
+	read_btn.EnableWindow(TRUE);
 
 	record_ipt.SetHotKey(VK_F10, NULL);
 	RegisterHotKey(m_hWnd, 0x128, NULL, VK_F10);
@@ -1435,95 +1436,62 @@ void CiClickDlg::SaveHotKey(CHotKeyCtrl &hotkey,CString Section) {
 }
 
 
-// 保存配置
+// 保存配置按钮
 void CiClickDlg::OnBnClickedButton3()
 {
-		Config config;
-		config.loop_times = loop_times;
-		config.isFrontOpt = isFrontOpt;
-		config.setOnTop = setOnTop;
-		config.need_hide = need_hide;
-		config.isRandomClick = isRandomClick;
-		config.Random_Radius = Random_Radius;
-		config.gap = gap;
-		config.loop = loop;
-		config.start_hotkey = {};
-		config.mouse_hotkey = {};
-		config.keyboard_hotkey = {};
-		config.List = pointInfo;
+	// 弹出保存对话框
+	CFileDialog dlg(FALSE, _T("ini"), _T("config.ini"), OFN_OVERWRITEPROMPT, _T("INI Files(*.ini)|*.ini||"), this);
+	if (dlg.DoModal() != IDOK) return;
+	CString filePath = dlg.GetPathName();
 
-		// 其他配置
-		CString loop_times;
-		loop_times.Format(_T("%d"), config.loop_times);
-		SaveInitConfig(_T("Global"), _T("loop_times"), loop_times);
-		
-		CString Random_Radius;
-		Random_Radius.Format(_T("%d"), config.Random_Radius);
-		SaveInitConfig(_T("Global"), _T("Random_Radius"), Random_Radius);
-		
-		CString gap;
-		gap.Format(_T("%d"), config.gap);
-		SaveInitConfig(_T("Global"), _T("gap"), gap);
+	// 辅助 Lambda
+	auto SaveCfg = [&](CString sec, CString key, CString val) {
+		::WritePrivateProfileString(sec, key, val, filePath);
+		};
 
-		CString loop;
-		loop.Format(_T("%d"), config.loop);
-		SaveInitConfig(_T("Global"), _T("loop"), loop);
+	CString tmpStr;
 
+	// 1. 保存全局参数
+	tmpStr.Format(_T("%u"), loop_times);     SaveCfg(_T("Global"), _T("loop_times"), tmpStr);
+	tmpStr.Format(_T("%u"), Random_Radius);  SaveCfg(_T("Global"), _T("Random_Radius"), tmpStr);
+	tmpStr.Format(_T("%u"), gap);            SaveCfg(_T("Global"), _T("gap"), tmpStr);
+	tmpStr.Format(_T("%u"), loop);           SaveCfg(_T("Global"), _T("loop"), tmpStr);
+	SaveCfg(_T("Global"), _T("IsFrontOpt"), isFrontOpt ? _T("1") : _T("0"));
+	SaveCfg(_T("Global"), _T("need_hide"), need_hide ? _T("1") : _T("0"));
+	SaveCfg(_T("Global"), _T("isRandomClick"), isRandomClick ? _T("1") : _T("0"));
+	SaveCfg(_T("Global"), _T("setOnTop"), setOnTop ? _T("1") : _T("0"));
 
-		SaveInitConfig(_T("Global"), _T("IsFrontOpt"),config.isFrontOpt ? _T("1") : _T("0") );
-		SaveInitConfig(_T("Global"), _T("need_hide"),config.need_hide ? _T("1") : _T("0") );
-		SaveInitConfig(_T("Global"), _T("isRandomClick"),config.isRandomClick ? _T("1") : _T("0"));
-		SaveInitConfig(_T("Global"), _T("setOnTop"),config.setOnTop ? _T("1") : _T("0"));
+	// 2. 保存列表数量 (关键点：读取时依靠这个计数)
+	tmpStr.Format(_T("%zu"), pointInfo.size());
+	SaveCfg(_T("Global"), _T("PointCount"), tmpStr);
 
+	// 3. 循环保存点位
+	for (int i = 0; i < (int)pointInfo.size(); i++) {
+		CString sec;
+		sec.Format(_T("Point_%d"), i);
+		const auto& p = pointInfo[i];
 
-		// start热键
-		SaveHotKey(start_hotkey,_T("Start_Hotkey"));
-		SaveHotKey(hotkey1, _T("Mouse_Hotkey"));
-		SaveHotKey(keybd_hotkey_ipt, _T("Keybd_Hotkey"));
+		tmpStr.Format(_T("%d"), p.x);          SaveCfg(sec, _T("X"), tmpStr);
+		tmpStr.Format(_T("%d"), p.y);          SaveCfg(sec, _T("Y"), tmpStr);
+		tmpStr.Format(_T("%d"), p.event_type); SaveCfg(sec, _T("Event_Type"), tmpStr);
+		tmpStr.Format(_T("%d"), p.moust_key);  SaveCfg(sec, _T("Moust_Key"), tmpStr);
+		tmpStr.Format(_T("%u"), p.gap);        SaveCfg(sec, _T("Gap"), tmpStr);
+		tmpStr.Format(_T("%u"), p.times);      SaveCfg(sec, _T("Times"), tmpStr);
+		SaveCfg(sec, _T("Title"), p.title);
 
-		// 表格配置
-		for (int i = 0; i < config.List.size(); i++) {
-			CString strSection;
-			strSection.Format(_T("Point_%d"), i); // 动态节名
-			const PointInfo& point = config.List[i];
-
-			CString str;
-			str.Format(_T("%d"), point.x);
-			SaveInitConfig(strSection, _T("X"),str);
-			
-			str.Format(_T("%d"), point.y);
-			SaveInitConfig(strSection, _T("Y"),str);
-
-			str.Format(_T("%p"), point.hwnd);
-			//MessageBox(str);
-			SaveInitConfig(strSection, _T("Hwnd"), str);
-			
-			SaveInitConfig(strSection, _T("Class_Name"), point.className);
-
-			str.Format(_T("%d"), point.event_type);
-			SaveInitConfig(strSection, _T("Event_Type"), str);
-
-			str.Format(_T("%d"), point.moust_key);
-			SaveInitConfig(strSection, _T("Moust_Key"), str);
-
-			str.Format(_T("%d"), point.gap);
-			SaveInitConfig(strSection, _T("Gap"), str);
-
-			SaveInitConfig(strSection, _T("Title"), point.title);
-
-			if (point.event_type == 2) {
-				DWORD modifiers = point.hotKeyInfo.wModifiers;
-				SaveInitConfig(strSection, _T("Ctrl"), modifiers & HOTKEYF_CONTROL ? _T("1") : _T("0"));
-				SaveInitConfig(strSection, _T("Shift"), modifiers & HOTKEYF_SHIFT ? _T("1") : _T("0"));
-				SaveInitConfig(strSection, _T("Alt"), modifiers & HOTKEYF_ALT ? _T("1") : _T("0"));
-
-				CString strResult;
-				strResult.Format(_T("%d"), point.hotKeyInfo.wVirtualKey);
-				SaveInitConfig(strSection, _T("Hotkey"), strResult);
-			}
-	
+		// 键盘特有字段
+		if (p.event_type == 2) {
+			tmpStr.Format(_T("%d"), p.keybd_key); SaveCfg(sec, _T("Keybd_Key"), tmpStr);
+			tmpStr.Format(_T("%u"), p.keyCode);   SaveCfg(sec, _T("KeyCode"), tmpStr);
+			SaveCfg(sec, _T("KeyDisplay"), p.hotKeyInfo.strDisplay);
+			tmpStr.Format(_T("%u"), p.hotKeyInfo.wVirtualKey); SaveCfg(sec, _T("VKey"), tmpStr);
+			tmpStr.Format(_T("%u"), p.hotKeyInfo.wModifiers);  SaveCfg(sec, _T("Mod"), tmpStr);
 		}
 
+		tmpStr.Format(_T("%p"), p.hwnd);
+		SaveCfg(sec, _T("Hwnd"), tmpStr);
+	}
+	AfxMessageBox(_T("保存成功！"));
 }
 
 
@@ -1560,105 +1528,115 @@ vector<CString> CiClickDlg::GetPointSections(CString iniPath) {
 }
 
 // 读取配置
+// 读取配置按钮
 void CiClickDlg::OnBnClickedButton2()
 {
-	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_FILEMUSTEXIST,
-		_T("文本文件 (*.ini)|*.ini|所有文件 (*.*)|*.*||"),
-		this
-	);
+	CFileDialog dlg(TRUE, _T("ini"), NULL, OFN_FILEMUSTEXIST, _T("INI Files(*.ini)|*.ini||"), this);
+	if (dlg.DoModal() != IDOK) return;
+	CString filePath = dlg.GetPathName();
 
-	if (dlg.DoModal() == IDOK) {        // 显示对话框
-		CString filePath = dlg.GetPathName(); // 获取完整文件路径
+	pointInfo.clear();
+	list.DeleteAllItems();
 
-		CString Vloop_times = ReadSection(filePath, _T("Global"), _T("loop_times"));
-		loop_edit.SetWindowTextW(Vloop_times);
-		loop_times = (UINT)_ttoi(Vloop_times);
+	auto GetIniInt = [&](CString sec, CString key, int def) {
+		return (int)::GetPrivateProfileInt(sec, key, def, filePath);
+		};
+	auto GetIniStr = [&](CString sec, CString key) {
+		TCHAR buf[MAX_PATH];
+		::GetPrivateProfileString(sec, key, _T(""), buf, MAX_PATH, filePath);
+		return CString(buf);
+		};
 
-		CString VRandom_Radius = ReadSection(filePath, _T("Global"), _T("Random_Radius"));
-		blurry_ipt.SetWindowTextW(VRandom_Radius);
-		Random_Radius = (UINT)_ttoi(VRandom_Radius);
+	CString valStr;
 
+	// 1. 还原全局 UI 状态
+	loop_times = (UINT)GetIniInt(_T("Global"), _T("loop_times"), 0);
+	Random_Radius = (UINT)GetIniInt(_T("Global"), _T("Random_Radius"), 0);
+	gap = (UINT)GetIniInt(_T("Global"), _T("gap"), 20);
+	loop = (UINT)GetIniInt(_T("Global"), _T("loop"), 0);
 
-		CString Vgap = ReadSection(filePath, _T("Global"), _T("gap"));
-		gap_ipt.SetWindowTextW(Vgap);
-		gap = (UINT)_ttoi(Vgap);
+	valStr.Format(_T("%u"), loop_times);    loop_edit.SetWindowText(valStr);
+	valStr.Format(_T("%u"), Random_Radius); blurry_ipt.SetWindowText(valStr);
+	valStr.Format(_T("%u"), gap);           gap_ipt.SetWindowText(valStr);
+	valStr.Format(_T("%u"), loop);          loop_ipt.SetWindowText(valStr);
 
+	isFrontOpt = GetIniInt(_T("Global"), _T("IsFrontOpt"), 0);
+	isfront_check.SetCheck(isFrontOpt);
+	save_btn.EnableWindow(TRUE);
+	read_btn.EnableWindow(TRUE);
 
-		CString Vloop = ReadSection(filePath, _T("Global"), _T("loop"));
-		loop_ipt.SetWindowTextW(Vloop);
-		loop = (UINT)_ttoi(Vloop);
+	// 2. 读取数据点
+	int count = GetIniInt(_T("Global"), _T("PointCount"), 0);
+	for (int i = 0; i < count; i++) {
+		CString sec;
+		sec.Format(_T("Point_%d"), i);
 
-		CString VIsFrontOpt = ReadSection(filePath, _T("Global"), _T("IsFrontOpt"));
-		BOOL BIsFrontOpt =VIsFrontOpt == _T("1") ? TRUE : FALSE;
-		isFrontOpt = BIsFrontOpt;
-		isfront_check.SetCheck(BIsFrontOpt);
+		PointInfo p;
+		p.x = GetIniInt(sec, _T("X"), 0);
+		p.y = GetIniInt(sec, _T("Y"), 0);
+		p.event_type = GetIniInt(sec, _T("Event_Type"), 1);
+		p.moust_key = GetIniInt(sec, _T("Moust_Key"), 1);
+		p.gap = (UINT)GetIniInt(sec, _T("Gap"), 0);
+		p.times = (UINT)GetIniInt(sec, _T("Times"), 1);
+		p.title = GetIniStr(sec, _T("Title"));
+		CString strHwnd = GetIniStr(sec, _T("Hwnd"));
+		p.hwnd = (HWND)(ULONG_PTR)_tcstoul(strHwnd, NULL, 16);
 
-		CString Vneed_hide = ReadSection(filePath, _T("Global"), _T("need_hide"));
-		BOOL Bneed_hide = Vneed_hide == _T("1") ? TRUE : FALSE;
-		need_hide = Bneed_hide;
-		hide_check.SetCheck(Bneed_hide);
+		CString modeStr = _T("");
+		if (p.event_type == 1) { // 鼠标
+			switch (p.moust_key) {
+			case 1:  modeStr = _T("左键单击"); break;
+			case 2:  modeStr = _T("左键双击"); break;
+			case 3:  modeStr = _T("滚轮上滚"); break;
+			case 4:  modeStr = _T("滚轮下滚"); break;
+			case 5:  modeStr = _T("滚轮单击"); break;
+			case 6:  modeStr = _T("右键单击"); break;
+			case 7:  modeStr = _T("右键双击"); break;
+			case 9:  modeStr = _T("左键按下"); break;
+			case 10: modeStr = _T("左键松开"); break;
+			case 11: modeStr = _T("中键按下"); break;
+			case 12: modeStr = _T("中键松开"); break;
+			case 13: modeStr = _T("右键按下"); break;
+			case 14: modeStr = _T("右键松开"); break;
+			default: modeStr = _T("鼠标操作"); break;
+			}
+		}
+		else if (p.event_type == 2) { // 键盘
+			p.keybd_key = GetIniInt(sec, _T("Keybd_Key"), 1);
+			p.keyCode = (DWORD)GetIniInt(sec, _T("KeyCode"), 0);
+			p.hotKeyInfo.strDisplay = GetIniStr(sec, _T("KeyDisplay"));
+			p.hotKeyInfo.wVirtualKey = (WORD)GetIniInt(sec, _T("VKey"), 0);
+			p.hotKeyInfo.wModifiers = (WORD)GetIniInt(sec, _T("Mod"), 0);
 
-		CString VisRandomClick = ReadSection(filePath, _T("Global"), _T("isRandomClick"));
-		BOOL BisRandomClick = VisRandomClick == _T("1") ? TRUE : FALSE;
-		isRandomClick = BisRandomClick;
-		random_check.SetCheck(BisRandomClick);
-
-
-		CString VsetOnTop = ReadSection(filePath, _T("Global"), _T("setOnTop"));
-		BOOL BsetOnTop = VsetOnTop == _T("1") ? TRUE : FALSE;
-		setOnTop = BsetOnTop;
-		setOnTop_Check.SetCheck(BsetOnTop);
-
-		vector<CString> pointSections= GetPointSections(filePath);
-		//vector<PointInfo> politList;
-		int index = 0;
-		for (const auto& Section : pointSections) {
-			PointInfo point;
-
-			CString X = ReadSection(filePath, Section, _T("X"));
-			CString Y = ReadSection(filePath, Section, _T("Y"));
-			CString Class_Name = ReadSection(filePath, Section, _T("Class_Name"));
-			CString Event_Type = ReadSection(filePath, Section, _T("Event_Type"));
-			CString Moust_Key = ReadSection(filePath, Section, _T("Moust_Key"));
-			CString Gap = ReadSection(filePath, Section, _T("Gap"));
-			CString Title = ReadSection(filePath, Section, _T("Title"));
-			CString Hwnd = ReadSection(filePath, Section, _T("Hwnd"));
-
-	
-
-			point.x = (UINT)_ttoi(X);
-			point.y = (UINT)_ttoi(Y);
-			point.className = Class_Name;
-			point.event_type = (UINT)_ttoi(Event_Type);
-			point.moust_key = (UINT)_ttoi(Moust_Key);
-			point.gap = (UINT)_ttoi(Gap);
-			point.title = Title;
-			point.hwnd = reinterpret_cast<HWND>(_tcstoul(Hwnd, nullptr, 16));
-
-		
-
-			list.InsertItem(index, X);
-			list.SetItemText(index, 1, Y);
-			if (point.event_type == 1) {
-				list.SetItemText(index, 2, L"鼠标");
+			if (!p.hotKeyInfo.strDisplay.IsEmpty()) {
+				modeStr = p.hotKeyInfo.strDisplay;
 			}
 			else {
-				list.SetItemText(index, 2, L"键盘");
+				// 现在编译器认识这个函数了
+				CString keyName = VirtualKeyCodeToCString(p.keyCode);
+				modeStr = keyName + (p.keybd_key == 2 ? _T("按下") : _T("松开"));
 			}
-			list.SetItemText(index, 3, L"左键单击");
-			list.SetItemText(index, 4, Title);
-			list.SetItemText(index, 5, Gap);
-
-
-			pointInfo.push_back(point);
-			index++;
 		}
 
-		isScript = TRUE;
-		
-	}
-}
+		// 插入界面显示
+		int nIndex = list.GetItemCount();
+		valStr.Format(_T("%d"), p.x);
+		list.InsertItem(nIndex, valStr);
+		valStr.Format(_T("%d"), p.y);
+		list.SetItemText(nIndex, 1, valStr);
+		list.SetItemText(nIndex, 2, (p.event_type == 1 ? _T("鼠标") : _T("键盘")));
+		list.SetItemText(nIndex, 3, modeStr);
+		list.SetItemText(nIndex, 4, p.title);
+		valStr.Format(_T("%u"), p.gap);
+		list.SetItemText(nIndex, 5, valStr);
+		valStr.Format(_T("%u"), p.times);
+		list.SetItemText(nIndex, 6, valStr);
 
+		pointInfo.push_back(p);
+	}
+	isScript = TRUE;
+	AfxMessageBox(_T("加载完成！"));
+}
 
 
 void CiClickDlg::SetTimes2()
