@@ -1,4 +1,4 @@
-﻿
+
 // iClickDlg.cpp: 实现文件
 //
 
@@ -22,7 +22,6 @@ using namespace std;
 
 
 
-vector<PointInfo> pointInfo;
 LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
 
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
@@ -31,9 +30,9 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 
 HHOOK g_hMouseHook = NULL;
 HHOOK g_hKeyboardHook = NULL;
+CString VirtualKeyCodeToCString(DWORD vkCode);
 CiClickDlg* g_pThis = nullptr;
 INT64 timeTamp = 0;
-WORD record_hotkey=VK_F10;
 
 
 
@@ -181,11 +180,17 @@ BOOL CiClickDlg::OnInitDialog()
 
 
 	// 点击间隔edit初始化值
-	gap_ipt.SetWindowTextW(_T("20"));
-	loop_ipt.SetWindowTextW(_T("0"));
+	CString strGap, strLoop, strLoopTimes;
+	strGap.Format(_T("%d"), config.gap);
+	strLoop.Format(_T("%d"), config.loop);
+	strLoopTimes.Format(_T("%d"), config.loop_times);
+
+	gap_ipt.SetWindowTextW(strGap);
+	loop_ipt.SetWindowTextW(strLoop);
+	loop_edit.SetWindowTextW(strLoopTimes);
 
 	CString Random_Radius_Str;
-	Random_Radius_Str.Format(_T("%d"), Random_Radius);
+	Random_Radius_Str.Format(_T("%d"), config.Random_Radius);
 	blurry_ipt.SetWindowTextW(Random_Radius_Str);
 
 	setOnTop_Check.SetCheck(TRUE);
@@ -195,38 +200,35 @@ BOOL CiClickDlg::OnInitDialog()
 
 
 	//注册热键 F6
-	hotkey1.SetHotKey(watch_hotkey, NULL);
-	keybd_hotkey_ipt.SetHotKey(keybd_hotkey, NULL);
+	hotkey1.SetHotKey(config.watch_hotkey, NULL);
+	keybd_hotkey_ipt.SetHotKey(config.keybd_hotkey, NULL);
 	
-	start_hotkey.SetHotKey(VK_F8,NULL);
-	RegisterHotKey(m_hWnd, 0x124, NULL, VK_F8);
+	start_hotkey.SetHotKey(config.start_hotkey.wVirtualKey, config.start_hotkey.wModifiers);
+	RegisterHotKey(m_hWnd, 0x124, config.start_hotkey.wModifiers, config.start_hotkey.wVirtualKey);
 
 
-	random_check.SetCheck(isRandomClick);
+	random_check.SetCheck(config.isRandomClick);
 
 	// 默认禁用模糊点击范围设置
-	blurry_ipt.EnableWindow(FALSE);
+	blurry_ipt.EnableWindow(config.isRandomClick);
 
 	// 表格选中行默认为-1，未选择任何行
 	select_row = -1;
 
 	// 初始化单选按钮
-	((CButton*)GetDlgItem(IDC_RADIO3))->SetCheck(TRUE); //选上
-	((CButton*)GetDlgItem(IDC_RADIO4))->SetCheck(FALSE);//不选上
+	((CButton*)GetDlgItem(IDC_RADIO3))->SetCheck(config.Event_Type == 1); 
+	((CButton*)GetDlgItem(IDC_RADIO4))->SetCheck(config.Event_Type == 2);
 
 	// 给图片空间设置位图
 	CBitmap m_bmp;
 	m_bmp.LoadBitmap(IDB_BITMAP1);
 	CStatic* pPic = (CStatic*)GetDlgItem(IDC_STATIC_PIC);
-	pPic->SetWindowPos(NULL, 0, 0, 32,32, SWP_NOMOVE | SWP_NOZORDER);
+	pPic->SetWindowPos(NULL, 0, 0, 32, 32, SWP_NOMOVE | SWP_NOZORDER);
 	pPic->SetBitmap(m_bmp);
 	m_bmp.Detach(); // 关键！防止bmp析构时删除位图
 
 	// 初始化是否前台点击，默认后台点击
-	isfront_check.SetCheck(isFrontOpt);
-
-	// 初始化循环次数，0代表无限循环
-	loop_edit.SetWindowTextW(_T("0"));
+	isfront_check.SetCheck(config.isFrontOpt);
 
 	EnableToolTips(TRUE);
 
@@ -238,16 +240,11 @@ BOOL CiClickDlg::OnInitDialog()
 	CreateTip(gap_tip, IDC_EDIT2, _T("每次操作后的间隔"));
 	CreateTip(loop_gap_tip, IDC_EDIT5, _T("整个列表的操作执行一边后的间隔"));
 
+	save_btn.EnableWindow(TRUE);
+	read_btn.EnableWindow(TRUE);
 
-
-	save_btn.EnableWindow(FALSE);
-	read_btn.EnableWindow(FALSE);
-
-	record_ipt.SetHotKey(VK_F10, NULL);
-	RegisterHotKey(m_hWnd, 0x128, NULL, VK_F10);
-
-
-
+	record_ipt.SetHotKey(config.record_hotkey, NULL);
+	RegisterHotKey(m_hWnd, 0x128, NULL, config.record_hotkey);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -317,7 +314,7 @@ void CiClickDlg::OnEnChangeEdit2()
 {
 	CString num;
 	gap_ipt.GetWindowText(num);
-	gap = (UINT)_ttoi(num);
+	config.gap = (UINT)_ttoi(num);
 }
 
 // 注册获取开始坐标快捷键
@@ -338,7 +335,7 @@ void CiClickDlg::OnBnClickedCheck2()
 		 UnregisterHotKey(m_hWnd, 0x123);
 		 UnregisterHotKey(m_hWnd, 0x126);
 	}
-	start_watch = start_Watch_Check.GetCheck();
+	config.start_watch = start_Watch_Check.GetCheck();
 }
 
 
@@ -406,11 +403,11 @@ void SendKeyEvent(UINT vkCode, KeyEventType eventType) {
 // 前台事件多线程
 UINT FrontThreadOption(LPVOID pParam) {
 	CiClickDlg* Wnd = (CiClickDlg*)pParam;
-	UINT loop_times = Wnd->loop_times;
+	UINT loop_times = Wnd->config.loop_times;
 
-	while (Wnd->isClick) {
-		for (const auto& point : pointInfo) {
-			if (!Wnd->isClick) return 0;
+	while (Wnd->config.isClick) {
+		for (const auto& point : Wnd->config.List) {
+			if (!Wnd->config.isClick) return 0;
 
 			point.gap > 0 ? Sleep(point.gap) : NULL;		// 延迟
 
@@ -428,9 +425,9 @@ UINT FrontThreadOption(LPVOID pParam) {
 
 	
 			// 设置模糊点击
-			UINT Radius = Wnd->Random_Radius;
+			UINT Radius = Wnd->config.Random_Radius;
 			int x, y;
-			if (Wnd->isRandomClick) {
+			if (Wnd->config.isRandomClick) {
 				x = GetRand(ptCursor.x - Radius, ptCursor.x + Radius);
 				y = GetRand(ptCursor.y - Radius, ptCursor.y + Radius);
 			}
@@ -442,7 +439,7 @@ UINT FrontThreadOption(LPVOID pParam) {
 			SetCursorPos(x, y);
 
 			for (int times = point.times; times > 0; times--) {
-				if (!Wnd->isClick) return 0;
+				if (!Wnd->config.isClick) return 0;
 
 				if (point.event_type == 1) {		// 鼠标事件
 					if (point.moust_key == 1) {// 单击
@@ -457,7 +454,7 @@ UINT FrontThreadOption(LPVOID pParam) {
 						INPUT input = { 0 };
 						input.type = INPUT_MOUSE;
 						input.mi.dwFlags = MOUSEEVENTF_WHEEL;
-						input.mi.mouseData = point.scrollDistance? point.scrollDistance:120; // 正值表示向上滚动
+						input.mi.mouseData = point.scrollDistance ? point.scrollDistance : 120; // 正值表示向上滚动
 						
 						SendInput(1, &input, sizeof(INPUT));
 					}
@@ -466,8 +463,7 @@ UINT FrontThreadOption(LPVOID pParam) {
 						input.type = INPUT_MOUSE;
 						input.mi.dwFlags = MOUSEEVENTF_WHEEL;
 
-
-						input.mi.mouseData = point.scrollDistance * -1 ? point.scrollDistance : -120; // 正值表示向上滚动
+						input.mi.mouseData = point.scrollDistance ? -point.scrollDistance : -120; // 负值表示向下滚动
 						SendInput(1, &input, sizeof(INPUT));
 					}
 					else if (point.moust_key == 5) {// 滚轮点击
@@ -583,20 +579,20 @@ UINT FrontThreadOption(LPVOID pParam) {
 						SendKeyEvent(point.keyCode, KeyEventType::KEY_UP);
 					}
 				}
-				Wnd->gap > 0 ? Sleep(Wnd->gap) : NULL;		// 单次操作间隔
+				Wnd->config.gap > 0 ? Sleep(Wnd->config.gap) : NULL;		// 单次操作间隔
 
 			}
 
 
 		}
-		Wnd->loop > 0 ? Sleep(Wnd->loop) : NULL;		// 每一轮间隔
-		if (Wnd->loop_times != 0) {
+		Wnd->config.loop > 0 ? Sleep(Wnd->config.loop) : NULL;		// 每一轮间隔
+		if (Wnd->config.loop_times != 0) {
 			loop_times--;
 			if (loop_times == 0) {
-				Wnd->isClick = false;
+				Wnd->config.isClick = false;
 				Wnd->start_btn.SetWindowTextW(_T("开始"));
 				return 0;
-			};
+			}
 		}
 
 	}
@@ -608,19 +604,29 @@ UINT FrontThreadOption(LPVOID pParam) {
 UINT BackThreadOption(LPVOID pParam)
 {
 	CiClickDlg* Wnd = (CiClickDlg*)pParam;
-	UINT loop_times= Wnd->loop_times;
+	UINT loop_times= Wnd->config.loop_times;
 	
-	while (Wnd->isClick) {
-		for (const auto& point : pointInfo) {
-			if (!Wnd->isClick) return 0;
-			if (!::IsWindow(point.hwnd)) continue;
+	while (Wnd->config.isClick) {
+		for (const auto& point : Wnd->config.List) {
+			if (!Wnd->config.isClick) return 0;
+			
+			HWND targetHwnd = point.hwnd;
+			// 如果句柄失效（例如重新读取的脚本），尝试通过标题和类名找回
+			if (!::IsWindow(targetHwnd)) {
+				if (!point.title.IsEmpty()) {
+					targetHwnd = ::FindWindow(point.className.IsEmpty() ? NULL : point.className, point.title);
+				}
+			}
+
+			if (!::IsWindow(targetHwnd)) continue;
+
 			point.gap > 0 ? Sleep(point.gap) : NULL;		// 延迟
 			// 处理鼠标事件
-			UINT Radius = Wnd->Random_Radius;
-			CWnd* pTempWnd = CWnd::FromHandle(point.hwnd);  // 临时对象，仅当前作用域有效
+			UINT Radius = Wnd->config.Random_Radius;
+			CWnd* pTempWnd = CWnd::FromHandle(targetHwnd);  // 临时对象，仅当前作用域有效
 
 			int x, y;
-			if (Wnd->isRandomClick) {
+			if (Wnd->config.isRandomClick) {
 				x = GetRand(point.x - Radius, point.x + Radius);
 				y = GetRand(point.y - Radius, point.y + Radius);
 			}
@@ -630,63 +636,60 @@ UINT BackThreadOption(LPVOID pParam)
 			}
 
 			for (int times = point.times; times > 0; times--) {
-				if (!Wnd->isClick) return 0;
+				if (!Wnd->config.isClick) return 0;
 				switch (point.event_type) {
 				case 1:    // 鼠标事件
 				{
 					switch (point.moust_key) {
 					case 1:			// 单击
 					{
-					/*	pTempWnd->SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
-						pTempWnd->SendMessage(WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));*/
-						SetCursorPos(x, y);
-
-						// 2. 模拟一次完整的左键单击（按下和弹起）
-						mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-						mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+						pTempWnd->PostMessage(WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_LBUTTONUP, 0, MAKELPARAM(x, y));
 						break;
 					}
 					case 2:			// 双击
 					{
 						// 第一次点击
-						pTempWnd->SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
-						pTempWnd->SendMessage(WM_LBUTTONUP, 0, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_LBUTTONUP, 0, MAKELPARAM(x, y));
 						// 第二次点击（双击）
-						pTempWnd->SendMessage(WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(x, y));
-						pTempWnd->SendMessage(WM_LBUTTONUP, 0, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_LBUTTONUP, 0, MAKELPARAM(x, y));
 						break;
 					}
 					case 3:		// 滚轮上滚
 					{
-						pTempWnd->SendMessage(WM_MOUSEWHEEL, MAKEWPARAM(0, 120), MAKELPARAM(x, y));
+						int distance = point.scrollDistance ? point.scrollDistance : 120;
+						pTempWnd->PostMessage(WM_MOUSEWHEEL, MAKEWPARAM(0, distance), MAKELPARAM(x, y));
 						break;
 					}
 					case 4:// 滚轮下滚
 
 					{
-						pTempWnd->SendMessage(WM_MOUSEWHEEL, MAKEWPARAM(0, 120 * -1), MAKELPARAM(x, y));
+						int distance = point.scrollDistance ? -point.scrollDistance : -120;
+						pTempWnd->PostMessage(WM_MOUSEWHEEL, MAKEWPARAM(0, distance), MAKELPARAM(x, y));
 						break;
 					}
 					case 5: // 滚轮点击
 					{
-						pTempWnd->SendMessage(WM_MBUTTONDOWN, 0, MAKELPARAM(x, y));
-						pTempWnd->SendMessage(WM_MBUTTONUP, 0, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_MBUTTONDOWN, 0, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_MBUTTONUP, 0, MAKELPARAM(x, y));
 						break;
 					}
 
 					case 6:		// 右键单击
 					{
-						pTempWnd->SendMessage(WM_RBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
-						pTempWnd->SendMessage(WM_RBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_RBUTTONDOWN, MK_RBUTTON, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_RBUTTONUP, 0, MAKELPARAM(x, y));
 						break;
 					}
 					case 7:		// 右键双击
 					{
-						pTempWnd->SendMessage(WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
-						pTempWnd->SendMessage(WM_RBUTTONUP, 0, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_RBUTTONUP, 0, MAKELPARAM(x, y));
 						Sleep(200); // 推荐200-500ms
-						pTempWnd->SendMessage(WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
-						pTempWnd->SendMessage(WM_RBUTTONUP, 0, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_RBUTTONDOWN, 0, MAKELPARAM(x, y));
+						pTempWnd->PostMessage(WM_RBUTTONUP, 0, MAKELPARAM(x, y));
 						break;
 					}
 					default:
@@ -705,9 +708,9 @@ UINT BackThreadOption(LPVOID pParam)
 					if (modifiers & HOTKEYF_SHIFT) keybd_event(VK_SHIFT, 0, 0, 0);        // 按下 Shift
 					if (modifiers & HOTKEYF_ALT) keybd_event(VK_MENU, 0, 0, 0);        // 按下 ALT
 
-					keybd_event(virtualKey, MapVirtualKey(virtualKey, 0), 0, 0);
+					keybd_event((BYTE)virtualKey, (BYTE)MapVirtualKey(virtualKey, 0), 0, 0);
 					Sleep(8);
-					keybd_event(virtualKey, MapVirtualKey(virtualKey, 0), KEYEVENTF_KEYUP, 0);
+					keybd_event((BYTE)virtualKey, (BYTE)MapVirtualKey(virtualKey, 0), KEYEVENTF_KEYUP, 0);
 
 					if (modifiers & HOTKEYF_ALT) keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);   // 松开 ALT
 					if (modifiers & HOTKEYF_SHIFT) keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, 0);  // 松开 SHIFT
@@ -718,19 +721,19 @@ UINT BackThreadOption(LPVOID pParam)
 					break;
 				}
 
-				Wnd->gap > 0 ? Sleep(Wnd->gap) : NULL;		// 单次操作间隔
+				Wnd->config.gap > 0 ? Sleep(Wnd->config.gap) : NULL;		// 单次操作间隔
 			}
 
 			
 		}
-		Wnd->loop > 0 ? Sleep(Wnd->loop) : NULL;		// 每一轮间隔
-		if (Wnd->loop_times != 0) {
+		Wnd->config.loop > 0 ? Sleep(Wnd->config.loop) : NULL;		// 每一轮间隔
+		if (Wnd->config.loop_times != 0) {
 			loop_times--;
 			if (loop_times == 0) {
-				Wnd->isClick = false;
+				Wnd->config.isClick = false;
 				Wnd->start_btn.SetWindowTextW(_T("开始"));
 				return 0;
-			};
+			}
 		}
 	}
 	return 0; // 线程退出码
@@ -739,34 +742,28 @@ UINT BackThreadOption(LPVOID pParam)
 
 void CiClickDlg::OnBnClickedButton1()
 {
-	if (pointInfo.empty()) {
+	if (config.List.empty()) {
 		MessageBox(_T("请添加坐标信息"));
 		return;
 	}
 	
-	if (isClick == TRUE) { 
-		isClick = FALSE;
+	if (config.isClick == TRUE) { 
+		config.isClick = FALSE;
 		start_btn.SetWindowTextW(_T("开始"));
 	} 
 	else {
-		if (isScript && !isFrontOpt) {
-			MessageBox(_T("录制和读取的脚本只适用于前台点击，请勾选前台点击"));
-			return;
-		}
-		isClick = TRUE;
-		if (isFrontOpt ==  TRUE) {
-			AfxBeginThread(FrontThreadOption, this);
-		}
-		else {
-			AfxBeginThread(BackThreadOption, this);
-		}
-		start_btn.SetWindowTextW(_T("停止"));
-	}
-	if (isFrontOpt == TRUE) {
-		save_btn.EnableWindow(!isClick);
-		read_btn.EnableWindow(!isClick);
-		//record_btn.EnableWindow(!isClick);
-	}
+				config.isClick = TRUE;
+				if (config.isFrontOpt == TRUE) {
+					AfxBeginThread(FrontThreadOption, this);
+				}
+				else {
+					AfxBeginThread(BackThreadOption, this);
+				}
+				start_btn.SetWindowTextW(_T("停止"));
+
+			}
+	save_btn.EnableWindow(!config.isClick);
+	read_btn.EnableWindow(!config.isClick);
 
 }
 
@@ -778,11 +775,11 @@ void CiClickDlg::OnBnClickedCheck3()
 	
 	if (setOnTop_Check.GetCheck() ==  TRUE) {
 		mainWnd->SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
-		setOnTop = TRUE;
+		config.setOnTop = TRUE;
 	}
 	else {
 		mainWnd->SetWindowPos(&wndNoTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
-		setOnTop = FALSE;
+		config.setOnTop = FALSE;
 	}
 }
 
@@ -817,7 +814,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 {
 	if (main_tab_index != 0) return;
 	if (nHotKeyId == 0x123) {
-		if (start_watch == FALSE) return;
+		if (config.start_watch == FALSE) return;
 		CPoint ptCursor;
 		GetCursorPos(&ptCursor);//获取鼠标位置
 		int ptScreenX = ptCursor.x;
@@ -856,26 +853,22 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		pI.moust_key = 1;
 		pI.times = 1;
 		
-		pointInfo.push_back(pI);
+		config.List.push_back(pI);
 	
 	}
 	else if (nHotKeyId == 0x124) {
-		if (pointInfo.empty()) {
+		if (config.List.empty()) {
 			MessageBox(_T("请添加坐标信息"));
 			return;
 		}
 
-		if (isClick == TRUE) {
+		if (config.isClick == TRUE) {
 			start_btn.SetWindowTextW(_T("开始"));
-			isClick = FALSE;
+			config.isClick = FALSE;
 		}
 		else {
-			if (isScript&&!isFrontOpt) {
-				MessageBox(_T("录制和读取的脚本只适用于前台点击，请勾选前台点击"));
-				return;
-			}
-			isClick = TRUE;
-			if (isFrontOpt == TRUE) {
+			config.isClick = TRUE;
+			if (config.isFrontOpt == TRUE) {
 				AfxBeginThread(FrontThreadOption, this);
 			}
 			else {
@@ -884,14 +877,11 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 			start_btn.SetWindowTextW(_T("停止"));
 
 		}
-		if (isFrontOpt == TRUE) {
-			save_btn.EnableWindow(!isClick);
-			read_btn.EnableWindow(!isClick);
-			//record_btn.EnableWindow(!isClick);
-		}
+		save_btn.EnableWindow(!config.isClick);
+		read_btn.EnableWindow(!config.isClick);
 	}
 	else if (nHotKeyId == 0x126) {
-		if (start_watch == FALSE) return;
+		if (config.start_watch == FALSE) return;
 		CPoint ptCursor;
 		GetCursorPos(&ptCursor);//获取鼠标位置
 		int ptScreenX = ptCursor.x;
@@ -935,16 +925,16 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 		int len = ::GetClassName(hWnd->m_hWnd, szClassName, 256);
 		pI.className = CString(szClassName, len);
 
-		pointInfo.push_back(pI);
+		config.List.push_back(pI);
 	}
 	else if (nHotKeyId == 0x128) {			// 录制脚本功能
 
-		if (!isFrontOpt) {
+		if (!config.isFrontOpt) {
 			MessageBox(L"只可录制前台操作");
 			return;
 		};
-		if (isClick) return;
-		if (!isRecording) {
+		if (config.isClick) return;
+		if (!config.isRecording) {
 			Sleep(500);
 			g_pThis = this;
 			g_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, GetModuleHandle(NULL), 0);
@@ -953,7 +943,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 				AfxMessageBox(_T("钩子安装失败！"));
 			}
 			record_text.SetWindowTextW(_T("停止录制"));
-			isScript = TRUE;
+			config.isScript = TRUE;
 		}
 		else {
 			g_pThis = nullptr;
@@ -964,7 +954,7 @@ void CiClickDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 			record_text.SetWindowTextW(_T("开始录制"));
 
 		}
-		isRecording = !isRecording;
+		config.isRecording = !config.isRecording;
 	}
 	CDialogEx::OnHotKey(nHotKeyId, nKey1, nKey2);
 }
@@ -974,7 +964,7 @@ void CiClickDlg::OnEnChangeEdit5()
 {
 	CString num;
 	loop_ipt.GetWindowText(num);
-	loop = (UINT)_ttoi(num);
+	config.loop = (UINT)_ttoi(num);
 }
 
 // 获取坐标快捷键控件值改变，先取消之前的快捷键，再注册新的
@@ -993,6 +983,8 @@ void CiClickDlg::OnStartHotKeyChanged()
 	WORD wVirtualKeyCode;
 	WORD wModifiers;
 	start_hotkey.GetHotKey(wVirtualKeyCode, wModifiers);
+	config.start_hotkey.wVirtualKey = wVirtualKeyCode;
+	config.start_hotkey.wModifiers = wModifiers;
 	UnregisterHotKey(m_hWnd, 0x124); 
 	RegisterHotKey(m_hWnd, 0x124, wModifiers, wVirtualKeyCode);
 }
@@ -1002,7 +994,7 @@ void CiClickDlg::OnRecordHotKeyChanged()
 	WORD wVirtualKeyCode;
 	WORD wModifiers;
 	record_ipt.GetHotKey(wVirtualKeyCode, wModifiers);
-	record_hotkey = wVirtualKeyCode;
+	config.record_hotkey = wVirtualKeyCode;
 	if (wModifiers) {
 		MessageBox(L"录制快捷键带有修饰符会影响录制\n只可设置单个快捷键");
 		return;
@@ -1029,7 +1021,7 @@ void CiClickDlg::OnNMRClickList1(NMHDR* pNMHDR, LRESULT* pResult)
 		CPoint pt;
 		GetCursorPos(&pt);
 		// 加载鼠标点击方式的菜单
-		if (pointInfo[row].event_type == 1) {
+		if (config.List[row].event_type == 1) {
 			CMenu menu;
 			menu.LoadMenu(IDR_MENU1);
 
@@ -1038,7 +1030,7 @@ void CiClickDlg::OnNMRClickList1(NMHDR* pNMHDR, LRESULT* pResult)
 			popmenu->TrackPopupMenu(TPM_RIGHTBUTTON, pt.x, pt.y, this);
 		}
 		// 加载设置键位的菜单
-		else if (pointInfo[row].event_type == 2) {
+		else if (config.List[row].event_type == 2) {
 			CMenu menu;
 			menu.LoadMenu(IDR_MENU2);
 
@@ -1057,8 +1049,8 @@ void CiClickDlg::OnNMRClickList1(NMHDR* pNMHDR, LRESULT* pResult)
 void CiClickDlg::OnMenuRClick()
 {
 	// TODO: 在此添加命令处理程序代码
-	if (select_row >= 0 && select_row < pointInfo.size()) {
-		pointInfo.erase(pointInfo.begin() + select_row); // 删除第select_row个元素
+	if (select_row >= 0 && select_row < (int)config.List.size()) {
+		config.List.erase(config.List.begin() + select_row); // 删除第select_row个元素
 	}
 	list.DeleteItem(select_row);
 }
@@ -1069,11 +1061,11 @@ void CiClickDlg::OnBnClickedCheck1()
 {
 		if (random_check.GetCheck() == TRUE) {
 			blurry_ipt.EnableWindow(TRUE);
-			isRandomClick = TRUE;
+			config.isRandomClick = TRUE;
 		}
 		else {
 			blurry_ipt.EnableWindow(FALSE);
-			isRandomClick = FALSE;
+			config.isRandomClick = FALSE;
 		}
 }
 
@@ -1082,7 +1074,7 @@ void CiClickDlg::OnEnChangeEdit1()
 	CString str;
 	blurry_ipt.GetWindowTextW(str);
 	UINT num = (UINT)_ttoi(str);
-	Random_Radius = num;
+	config.Random_Radius = num;
 }
 
 void CiClickDlg::OnLButtonDown(UINT nFlags, CPoint point)
@@ -1099,7 +1091,7 @@ void CiClickDlg::OnLButtonDown(UINT nFlags, CPoint point)
 				ReleaseCapture();
 			}
 			SetCursor(LoadCursor(NULL, IDC_CROSS));
-			if (need_hide==TRUE) {
+			if (config.need_hide==TRUE) {
 				CWnd* mainWnd = AfxGetMainWnd();
 				mainWnd->ShowWindow(SW_MINIMIZE);
 			}
@@ -1145,11 +1137,11 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 
 		list.InsertItem(iRow, x);
 		list.SetItemText(iRow, 1, y);
-		if (Event_Type == 1) {
+		if (config.Event_Type == 1) {
 			list.SetItemText(iRow, 2, L"鼠标");
 			list.SetItemText(iRow, 3, L"左键单击");
 		}
-		else if (Event_Type == 2) {
+		else if (config.Event_Type == 2) {
 			list.SetItemText(iRow, 2, L"键盘");
 			list.SetItemText(iRow, 3, L"");
 			pI.keybd_key = 1;
@@ -1164,11 +1156,11 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		pI.screenX = ptScreenX;
 		pI.screenY = ptScreenY;
 		pI.hwnd = hWnd->m_hWnd;
-		pI.event_type = Event_Type;
+		pI.event_type = config.Event_Type;
 		pI.title = str;
 		pI.gap = 0;
 		pI.times = 1;
-		if (Event_Type==1) {
+		if (config.Event_Type==1) {
 			pI.moust_key = 1;
 		}
 
@@ -1176,11 +1168,11 @@ void CiClickDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		int len = ::GetClassName(hWnd->m_hWnd, szClassName, 256);
 		pI.className = CString(szClassName, len);
 
-		pointInfo.push_back(pI);
+		config.List.push_back(pI);
 
 
 		// 恢复显示主窗口
-		if (need_hide == TRUE) {
+		if (config.need_hide == TRUE) {
 			CWnd* mainWnd = AfxGetMainWnd();
 			mainWnd->ShowWindow(SW_RESTORE);
 		}
@@ -1216,28 +1208,28 @@ void CiClickDlg::OnMouseMove(UINT nFlags, CPoint point)
 void CiClickDlg::OnBnClickedCheck4()
 {
 	BOOL hide = hide_check.GetCheck();
-	need_hide = hide;
+	config.need_hide = hide;
 }
 
 // 修改事件类型为鼠标事件
 void CiClickDlg::OnBnClickedRadio3()
 {
 	if (IsDlgButtonChecked(IDC_RADIO3) == BST_CHECKED) {
-		Event_Type = 1;
+		config.Event_Type = 1;
 	}
 }
 // 修改事件类型为键盘事件
 void CiClickDlg::OnBnClickedRadio4()
 {
 	if (IsDlgButtonChecked(IDC_RADIO4) == BST_CHECKED) {
-		Event_Type = 2;
+		config.Event_Type = 2;
 	}
 }
 
 void CiClickDlg::ChangeToSingleClick()
 {
 	// TODO: 修改点击方式为单击
-	pointInfo[select_row].moust_key = 1;
+	config.List[select_row].moust_key = 1;
 	list.SetItemText(select_row, 3, L"左键单击");
 
 }
@@ -1245,7 +1237,7 @@ void CiClickDlg::ChangeToSingleClick()
 void CiClickDlg::ChangeToDoubleClick()
 {
 	// TODO: 修改点击方式为双击
-	pointInfo[select_row].moust_key = 2;
+	config.List[select_row].moust_key = 2;
 	list.SetItemText(select_row, 3, L"左键双击");
 }
 
@@ -1253,8 +1245,8 @@ void CiClickDlg::ChangeToDoubleClick()
 void CiClickDlg::DeleteSingleRow()
 {
 	// 删除单行
-	if (select_row >= 0 && select_row < pointInfo.size()) {
-		pointInfo.erase(pointInfo.begin() + select_row); // 删除第select_row个元素
+	if (select_row >= 0 && select_row < (int)config.List.size()) {
+		config.List.erase(config.List.begin() + select_row); // 删除第select_row个元素
 	}
 	list.DeleteItem(select_row);
 }
@@ -1262,17 +1254,17 @@ void CiClickDlg::DeleteSingleRow()
 void CiClickDlg::DeleteAllRow()
 {
 	// 删除所有元素
-	pointInfo.clear(); // 删除所有元素
+	config.List.clear(); // 删除所有元素
 	list.DeleteAllItems(); // 删除所有行
-	isScript = FALSE;
+	config.isScript = FALSE;
 }
 
 void CiClickDlg::OnDeleteAll()
 {
 	// TODO: 在此添加命令处理程序代码
-	pointInfo.clear(); // 删除所有元素
+	config.List.clear(); // 删除所有元素
 	list.DeleteAllItems(); // 删除所有行
-	isScript = FALSE;
+	config.isScript = FALSE;
 }
 
 void CiClickDlg::OpenKeySelectDlg()
@@ -1280,17 +1272,17 @@ void CiClickDlg::OpenKeySelectDlg()
 		// 打开键位选择模态框
 	Key_Select keySelect;
 	if (keySelect.DoModal() == IDOK) { // 阻塞直到模态框关闭[7](@ref)
-		pointInfo[select_row].hotKeyInfo = keySelect.m_hotKeyInfo;
+		config.List[select_row].hotKeyInfo = keySelect.m_hotKeyInfo;
 		list.SetItemText(select_row, 3, keySelect.m_hotKeyInfo.strDisplay);
 	}
 }
 
 void CiClickDlg::OpenGapModal()
 {
-	GapModal gapModal(NULL, pointInfo[select_row].gap);
+	GapModal gapModal(NULL, config.List[select_row].gap);
 
 	if (gapModal.DoModal() == IDOK) { // 阻塞直到模态框关闭[7](@ref)
-		pointInfo[select_row].gap = gapModal.gap;
+		config.List[select_row].gap = gapModal.gap;
 		CString str;
 		str.Format(_T("%d"), gapModal.gap);
 		list.SetItemText(select_row, 5, str);
@@ -1301,9 +1293,9 @@ void CiClickDlg::OpenGapModal()
 // 打开单条数据延迟设置弹窗
 void CiClickDlg::OpenGapDialog1()
 {
-	GapModal gapModal(NULL, pointInfo[select_row].gap);
+	GapModal gapModal(NULL, config.List[select_row].gap);
 	if (gapModal.DoModal() == IDOK) { // 阻塞直到模态框关闭[7](@ref)
-		pointInfo[select_row].gap = gapModal.gap;
+		config.List[select_row].gap = gapModal.gap;
 		CString str;
 		str.Format(_T("%d"), gapModal.gap);
 		list.SetItemText(select_row, 5, str);
@@ -1313,21 +1305,18 @@ void CiClickDlg::OpenGapDialog1()
 void CiClickDlg::OnBnClickedCheck5()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	isFrontOpt = isfront_check.GetCheck();
-	save_btn.EnableWindow(isFrontOpt);
-	read_btn.EnableWindow(isFrontOpt);
-	//record_btn.EnableWindow(isFrontOpt);
+	config.isFrontOpt = isfront_check.GetCheck();
 }
 
 void CiClickDlg::OnEnChangeEdit6()
 {
-	loop_times = GetDlgItemInt(IDC_EDIT6, NULL, FALSE);
+	config.loop_times = GetDlgItemInt(IDC_EDIT6, NULL, FALSE);
 }
 
 // 修改为键盘事件
 void CiClickDlg::ChangeToKeyBd()
 {
-	pointInfo[select_row].event_type = 2;
+	config.List[select_row].event_type = 2;
 	list.SetItemText(select_row, 2, L"键盘");
 	list.SetItemText(select_row, 3, L"");
 }
@@ -1335,8 +1324,8 @@ void CiClickDlg::ChangeToKeyBd()
 // 修改为鼠标事件
 void CiClickDlg::ChangeToMouse()
 {
-	pointInfo[select_row].event_type = 1;
-	pointInfo[select_row].moust_key = 1;
+	config.List[select_row].event_type = 1;
+	config.List[select_row].moust_key = 1;
 	list.SetItemText(select_row, 2, L"鼠标");
 	list.SetItemText(select_row, 3, L"左键单击");
 }
@@ -1344,14 +1333,14 @@ void CiClickDlg::ChangeToMouse()
 // 修改为滚轮上滚
 void CiClickDlg::ChangeToMidUp()
 {
-	pointInfo[select_row].moust_key = 3;
+	config.List[select_row].moust_key = 3;
 	list.SetItemText(select_row, 3, L"滚轮上滚");
 }
 
 // 修改为滚轮下滚
 void CiClickDlg::ChangeToMidDown()
 {
-	pointInfo[select_row].moust_key = 4;
+	config.List[select_row].moust_key = 4;
 	list.SetItemText(select_row, 3, L"滚轮下滚");
 }
 
@@ -1359,21 +1348,21 @@ void CiClickDlg::ChangeToMidDown()
 // 修改为滚轮单击
 void CiClickDlg::ChangeToMidClick()
 {
-	pointInfo[select_row].moust_key = 5;
+	config.List[select_row].moust_key = 5;
 	list.SetItemText(select_row, 3, L"滚轮单击");
 }
 
 // 修改为右键单击
 void CiClickDlg::ChangeToRightClick()
 {
-	pointInfo[select_row].moust_key = 6;
+	config.List[select_row].moust_key = 6;
 	list.SetItemText(select_row, 3, L"右键单击");
 }
 
 // 修改为右键双击
 void CiClickDlg::ChangeToRightDbClick()
 {
-	pointInfo[select_row].moust_key = 7;
+	config.List[select_row].moust_key = 7;
 	list.SetItemText(select_row, 3, L"右键双击");
 }
 
@@ -1398,132 +1387,134 @@ void GetDesktopPath(CString& strPath) {
 
 
 
-void CiClickDlg::SaveInitConfig(CString Section,CString Key, CString Value) {
-	CString strDesktopPath;
-	GetDesktopPath(strDesktopPath);
-
-
-	CTime currentTime = CTime::GetCurrentTime(); 
-	CString strTime = currentTime.Format(_T("%Y-%m-%d"));
-
-	strDesktopPath += "\\";
-	strDesktopPath += "config";
-	strDesktopPath += "_";
-	strDesktopPath += strTime;
-	strDesktopPath += ".ini";
-
-	if (!strDesktopPath.IsEmpty()) {
-		::WritePrivateProfileString(Section, Key, Value, strDesktopPath);
+void CiClickDlg::SaveInitConfig(CString Section, CString Key, CString Value, CString filePath) {
+	if (!filePath.IsEmpty()) {
+		::WritePrivateProfileString(Section, Key, Value, filePath);
 	}
 	else {
-		MessageBox(_T("保存失败，请联系作者"));
+		MessageBox(_T("保存路径不能为空"));
 	}
 }
 
-void CiClickDlg::SaveHotKey(CHotKeyCtrl &hotkey,CString Section) {
+void CiClickDlg::SaveHotKey(CHotKeyCtrl& hotkey, CString Section, CString filePath) {
 	WORD startVirtualKeyCode;
 	WORD startModifiers;
 	hotkey.GetHotKey(startVirtualKeyCode, startModifiers);
 
-	SaveInitConfig(Section, _T("Ctrl"), startModifiers & HOTKEYF_CONTROL ? _T("1") : _T("0"));
-	SaveInitConfig(Section, _T("Shift"), startModifiers & HOTKEYF_SHIFT ? _T("1") : _T("0"));
-	SaveInitConfig(Section, _T("Alt"), startModifiers & HOTKEYF_ALT ? _T("1") : _T("0"));
+	SaveInitConfig(Section, _T("Ctrl"), startModifiers & HOTKEYF_CONTROL ? _T("1") : _T("0"), filePath);
+	SaveInitConfig(Section, _T("Shift"), startModifiers & HOTKEYF_SHIFT ? _T("1") : _T("0"), filePath);
+	SaveInitConfig(Section, _T("Alt"), startModifiers & HOTKEYF_ALT ? _T("1") : _T("0"), filePath);
 
 	CString strResult;
 	strResult.Format(_T("%d"), startVirtualKeyCode);
-	SaveInitConfig(Section, _T("Hotkey"), strResult);
+	SaveInitConfig(Section, _T("Hotkey"), strResult, filePath);
+}
+
+void CiClickDlg::ReadHotKey(CHotKeyCtrl& hotkey, CString Section, CString filePath) {
+	CString Ctrl = ReadSection(filePath, Section, _T("Ctrl"));
+	CString Shift = ReadSection(filePath, Section, _T("Shift"));
+	CString Alt = ReadSection(filePath, Section, _T("Alt"));
+	CString Hotkey = ReadSection(filePath, Section, _T("Hotkey"));
+
+	WORD wVirtualKeyCode = (WORD)_ttoi(Hotkey);
+	WORD wModifiers = 0;
+	if (Ctrl == _T("1")) wModifiers |= HOTKEYF_CONTROL;
+	if (Shift == _T("1")) wModifiers |= HOTKEYF_SHIFT;
+	if (Alt == _T("1")) wModifiers |= HOTKEYF_ALT;
+
+	hotkey.SetHotKey(wVirtualKeyCode, wModifiers);
 }
 
 
 // 保存配置
 void CiClickDlg::OnBnClickedButton3()
 {
-		Config config;
-		config.loop_times = loop_times;
-		config.isFrontOpt = isFrontOpt;
-		config.setOnTop = setOnTop;
-		config.need_hide = need_hide;
-		config.isRandomClick = isRandomClick;
-		config.Random_Radius = Random_Radius;
-		config.gap = gap;
-		config.loop = loop;
-		config.start_hotkey = {};
-		config.mouse_hotkey = {};
-		config.keyboard_hotkey = {};
-		config.List = pointInfo;
+	CFileDialog dlg(FALSE, _T("ini"), NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+		_T("配置文件 (*.ini)|*.ini|所有文件 (*.*)|*.*||"), this);
+
+	if (dlg.DoModal() == IDOK)
+	{
+		CString filePath = dlg.GetPathName();
+
+		// 删除旧文件以防干扰
+		DeleteFile(filePath);
+
 
 		// 其他配置
-		CString loop_times;
-		loop_times.Format(_T("%d"), config.loop_times);
-		SaveInitConfig(_T("Global"), _T("loop_times"), loop_times);
-		
-		CString Random_Radius;
-		Random_Radius.Format(_T("%d"), config.Random_Radius);
-		SaveInitConfig(_T("Global"), _T("Random_Radius"), Random_Radius);
-		
-		CString gap;
-		gap.Format(_T("%d"), config.gap);
-		SaveInitConfig(_T("Global"), _T("gap"), gap);
+		CString str;
+		str.Format(_T("%d"), config.loop_times);
+		SaveInitConfig(_T("Global"), _T("loop_times"), str, filePath);
 
-		CString loop;
-		loop.Format(_T("%d"), config.loop);
-		SaveInitConfig(_T("Global"), _T("loop"), loop);
+		str.Format(_T("%d"), config.Random_Radius);
+		SaveInitConfig(_T("Global"), _T("Random_Radius"), str, filePath);
 
+		str.Format(_T("%d"), config.gap);
+		SaveInitConfig(_T("Global"), _T("gap"), str, filePath);
 
-		SaveInitConfig(_T("Global"), _T("IsFrontOpt"),config.isFrontOpt ? _T("1") : _T("0") );
-		SaveInitConfig(_T("Global"), _T("need_hide"),config.need_hide ? _T("1") : _T("0") );
-		SaveInitConfig(_T("Global"), _T("isRandomClick"),config.isRandomClick ? _T("1") : _T("0"));
-		SaveInitConfig(_T("Global"), _T("setOnTop"),config.setOnTop ? _T("1") : _T("0"));
+		str.Format(_T("%d"), config.loop);
+		SaveInitConfig(_T("Global"), _T("loop"), str, filePath);
 
+		SaveInitConfig(_T("Global"), _T("IsFrontOpt"), config.isFrontOpt ? _T("1") : _T("0"), filePath);
+		SaveInitConfig(_T("Global"), _T("need_hide"), config.need_hide ? _T("1") : _T("0"), filePath);
+		SaveInitConfig(_T("Global"), _T("isRandomClick"), config.isRandomClick ? _T("1") : _T("0"), filePath);
+		SaveInitConfig(_T("Global"), _T("setOnTop"), config.setOnTop ? _T("1") : _T("0"), filePath);
 
 		// start热键
-		SaveHotKey(start_hotkey,_T("Start_Hotkey"));
-		SaveHotKey(hotkey1, _T("Mouse_Hotkey"));
-		SaveHotKey(keybd_hotkey_ipt, _T("Keybd_Hotkey"));
+		SaveHotKey(start_hotkey, _T("Start_Hotkey"), filePath);
+		SaveHotKey(hotkey1, _T("Mouse_Hotkey"), filePath);
+		SaveHotKey(keybd_hotkey_ipt, _T("Keybd_Hotkey"), filePath);
+		SaveHotKey(record_ipt, _T("Record_Hotkey"), filePath);
 
 		// 表格配置
-		for (int i = 0; i < config.List.size(); i++) {
+		for (int i = 0; i < (int)config.List.size(); i++) {
 			CString strSection;
 			strSection.Format(_T("Point_%d"), i); // 动态节名
 			const PointInfo& point = config.List[i];
 
-			CString str;
 			str.Format(_T("%d"), point.x);
-			SaveInitConfig(strSection, _T("X"),str);
-			
+			SaveInitConfig(strSection, _T("X"), str, filePath);
+
 			str.Format(_T("%d"), point.y);
-			SaveInitConfig(strSection, _T("Y"),str);
+			SaveInitConfig(strSection, _T("Y"), str, filePath);
 
 			str.Format(_T("%p"), point.hwnd);
-			//MessageBox(str);
-			SaveInitConfig(strSection, _T("Hwnd"), str);
-			
-			SaveInitConfig(strSection, _T("Class_Name"), point.className);
+			SaveInitConfig(strSection, _T("Hwnd"), str, filePath);
+
+			SaveInitConfig(strSection, _T("Class_Name"), point.className, filePath);
 
 			str.Format(_T("%d"), point.event_type);
-			SaveInitConfig(strSection, _T("Event_Type"), str);
+			SaveInitConfig(strSection, _T("Event_Type"), str, filePath);
 
 			str.Format(_T("%d"), point.moust_key);
-			SaveInitConfig(strSection, _T("Moust_Key"), str);
+			SaveInitConfig(strSection, _T("Moust_Key"), str, filePath);
 
 			str.Format(_T("%d"), point.gap);
-			SaveInitConfig(strSection, _T("Gap"), str);
+			SaveInitConfig(strSection, _T("Gap"), str, filePath);
 
-			SaveInitConfig(strSection, _T("Title"), point.title);
+			str.Format(_T("%d"), point.times);
+			SaveInitConfig(strSection, _T("Times"), str, filePath);
+
+			str.Format(_T("%d"), point.scrollDistance);
+			SaveInitConfig(strSection, _T("ScrollDistance"), str, filePath);
+
+			str.Format(_T("%d"), point.keybd_key);
+			SaveInitConfig(strSection, _T("Keybd_Key"), str, filePath);
+
+			SaveInitConfig(strSection, _T("Title"), point.title, filePath);
 
 			if (point.event_type == 2) {
 				DWORD modifiers = point.hotKeyInfo.wModifiers;
-				SaveInitConfig(strSection, _T("Ctrl"), modifiers & HOTKEYF_CONTROL ? _T("1") : _T("0"));
-				SaveInitConfig(strSection, _T("Shift"), modifiers & HOTKEYF_SHIFT ? _T("1") : _T("0"));
-				SaveInitConfig(strSection, _T("Alt"), modifiers & HOTKEYF_ALT ? _T("1") : _T("0"));
+				SaveInitConfig(strSection, _T("Ctrl"), modifiers & HOTKEYF_CONTROL ? _T("1") : _T("0"), filePath);
+				SaveInitConfig(strSection, _T("Shift"), modifiers & HOTKEYF_SHIFT ? _T("1") : _T("0"), filePath);
+				SaveInitConfig(strSection, _T("Alt"), modifiers & HOTKEYF_ALT ? _T("1") : _T("0"), filePath);
 
 				CString strResult;
 				strResult.Format(_T("%d"), point.hotKeyInfo.wVirtualKey);
-				SaveInitConfig(strSection, _T("Hotkey"), strResult);
+				SaveInitConfig(strSection, _T("Hotkey"), strResult, filePath);
 			}
-	
 		}
-
+		MessageBox(_T("保存成功"));
+	}
 }
 
 
@@ -1563,54 +1554,65 @@ vector<CString> CiClickDlg::GetPointSections(CString iniPath) {
 void CiClickDlg::OnBnClickedButton2()
 {
 	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_FILEMUSTEXIST,
-		_T("文本文件 (*.ini)|*.ini|所有文件 (*.*)|*.*||"),
+		_T("配置文件 (*.ini)|*.ini|所有文件 (*.*)|*.*||"),
 		this
 	);
 
 	if (dlg.DoModal() == IDOK) {        // 显示对话框
 		CString filePath = dlg.GetPathName(); // 获取完整文件路径
 
+		// 清理旧数据
+		list.DeleteAllItems();
+		config.List.clear();
+
 		CString Vloop_times = ReadSection(filePath, _T("Global"), _T("loop_times"));
 		loop_edit.SetWindowTextW(Vloop_times);
-		loop_times = (UINT)_ttoi(Vloop_times);
+		config.loop_times = (UINT)_ttoi(Vloop_times);
 
 		CString VRandom_Radius = ReadSection(filePath, _T("Global"), _T("Random_Radius"));
 		blurry_ipt.SetWindowTextW(VRandom_Radius);
-		Random_Radius = (UINT)_ttoi(VRandom_Radius);
-
+		config.Random_Radius = (UINT)_ttoi(VRandom_Radius);
 
 		CString Vgap = ReadSection(filePath, _T("Global"), _T("gap"));
 		gap_ipt.SetWindowTextW(Vgap);
-		gap = (UINT)_ttoi(Vgap);
-
+		config.gap = (UINT)_ttoi(Vgap);
 
 		CString Vloop = ReadSection(filePath, _T("Global"), _T("loop"));
 		loop_ipt.SetWindowTextW(Vloop);
-		loop = (UINT)_ttoi(Vloop);
+		config.loop = (UINT)_ttoi(Vloop);
 
 		CString VIsFrontOpt = ReadSection(filePath, _T("Global"), _T("IsFrontOpt"));
-		BOOL BIsFrontOpt =VIsFrontOpt == _T("1") ? TRUE : FALSE;
-		isFrontOpt = BIsFrontOpt;
+		BOOL BIsFrontOpt = VIsFrontOpt == _T("1") ? TRUE : FALSE;
+		config.isFrontOpt = BIsFrontOpt;
 		isfront_check.SetCheck(BIsFrontOpt);
 
 		CString Vneed_hide = ReadSection(filePath, _T("Global"), _T("need_hide"));
 		BOOL Bneed_hide = Vneed_hide == _T("1") ? TRUE : FALSE;
-		need_hide = Bneed_hide;
+		config.need_hide = Bneed_hide;
 		hide_check.SetCheck(Bneed_hide);
 
 		CString VisRandomClick = ReadSection(filePath, _T("Global"), _T("isRandomClick"));
 		BOOL BisRandomClick = VisRandomClick == _T("1") ? TRUE : FALSE;
-		isRandomClick = BisRandomClick;
+		config.isRandomClick = BisRandomClick;
 		random_check.SetCheck(BisRandomClick);
-
 
 		CString VsetOnTop = ReadSection(filePath, _T("Global"), _T("setOnTop"));
 		BOOL BsetOnTop = VsetOnTop == _T("1") ? TRUE : FALSE;
-		setOnTop = BsetOnTop;
+		config.setOnTop = BsetOnTop;
 		setOnTop_Check.SetCheck(BsetOnTop);
 
-		vector<CString> pointSections= GetPointSections(filePath);
-		//vector<PointInfo> politList;
+		// 读取热键
+		ReadHotKey(start_hotkey, _T("Start_Hotkey"), filePath);
+		ReadHotKey(hotkey1, _T("Mouse_Hotkey"), filePath);
+		ReadHotKey(keybd_hotkey_ipt, _T("Keybd_Hotkey"), filePath);
+		ReadHotKey(record_ipt, _T("Record_Hotkey"), filePath);
+
+		// 重新注册热键
+		OnStartHotKeyChanged();
+		OnHotKeyChanged();
+		OnRecordHotKeyChanged();
+
+		vector<CString> pointSections = GetPointSections(filePath);
 		int index = 0;
 		for (const auto& Section : pointSections) {
 			PointInfo point;
@@ -1621,10 +1623,11 @@ void CiClickDlg::OnBnClickedButton2()
 			CString Event_Type = ReadSection(filePath, Section, _T("Event_Type"));
 			CString Moust_Key = ReadSection(filePath, Section, _T("Moust_Key"));
 			CString Gap = ReadSection(filePath, Section, _T("Gap"));
+			CString Times = ReadSection(filePath, Section, _T("Times"));
+			CString ScrollDistance = ReadSection(filePath, Section, _T("ScrollDistance"));
+			CString Keybd_Key = ReadSection(filePath, Section, _T("Keybd_Key"));
 			CString Title = ReadSection(filePath, Section, _T("Title"));
 			CString Hwnd = ReadSection(filePath, Section, _T("Hwnd"));
-
-	
 
 			point.x = (UINT)_ttoi(X);
 			point.y = (UINT)_ttoi(Y);
@@ -1632,40 +1635,81 @@ void CiClickDlg::OnBnClickedButton2()
 			point.event_type = (UINT)_ttoi(Event_Type);
 			point.moust_key = (UINT)_ttoi(Moust_Key);
 			point.gap = (UINT)_ttoi(Gap);
+			point.times = (UINT)_ttoi(Times);
+			if (point.times == 0) point.times = 1;
+			point.scrollDistance = _ttoi(ScrollDistance);
+			point.keybd_key = _ttoi(Keybd_Key);
+			if (point.keybd_key == 0) point.keybd_key = 1;
 			point.title = Title;
 			point.hwnd = reinterpret_cast<HWND>(_tcstoul(Hwnd, nullptr, 16));
 
-		
+			if (point.event_type == 2) {
+				CString Ctrl = ReadSection(filePath, Section, _T("Ctrl"));
+				CString Shift = ReadSection(filePath, Section, _T("Shift"));
+				CString Alt = ReadSection(filePath, Section, _T("Alt"));
+				CString Hotkey = ReadSection(filePath, Section, _T("Hotkey"));
+
+				point.hotKeyInfo.wVirtualKey = (WORD)_ttoi(Hotkey);
+				point.hotKeyInfo.wModifiers = 0;
+				if (Ctrl == _T("1")) point.hotKeyInfo.wModifiers |= HOTKEYF_CONTROL;
+				if (Shift == _T("1")) point.hotKeyInfo.wModifiers |= HOTKEYF_SHIFT;
+				if (Alt == _T("1")) point.hotKeyInfo.wModifiers |= HOTKEYF_ALT;
+			}
 
 			list.InsertItem(index, X);
 			list.SetItemText(index, 1, Y);
+
+			CString opTypeStr = (point.event_type == 1) ? L"鼠标" : L"键盘";
+			list.SetItemText(index, 2, opTypeStr);
+
+			CString opMethodStr = L"";
 			if (point.event_type == 1) {
-				list.SetItemText(index, 2, L"鼠标");
+				switch (point.moust_key) {
+				case 1: opMethodStr = L"左键单击"; break;
+				case 2: opMethodStr = L"左键双击"; break;
+				case 3: opMethodStr = L"滚轮上滚"; break;
+				case 4: opMethodStr = L"滚轮下滚"; break;
+				case 5: opMethodStr = L"滚轮单击"; break;
+				case 6: opMethodStr = L"右键单击"; break;
+				case 7: opMethodStr = L"右键双击"; break;
+				case 8: opMethodStr = L"鼠标移动"; break;
+				case 9: opMethodStr = L"左键按下"; break;
+				case 10: opMethodStr = L"左键松开"; break;
+				case 11: opMethodStr = L"中键按下"; break;
+				case 12: opMethodStr = L"中键松开"; break;
+				case 13: opMethodStr = L"右键按下"; break;
+				case 14: opMethodStr = L"右键松开"; break;
+				}
 			}
 			else {
-				list.SetItemText(index, 2, L"键盘");
+				opMethodStr = VirtualKeyCodeToCString(point.hotKeyInfo.wVirtualKey);
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_CONTROL) opMethodStr = L"Ctrl+" + opMethodStr;
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_SHIFT) opMethodStr = L"Shift+" + opMethodStr;
+				if (point.hotKeyInfo.wModifiers & HOTKEYF_ALT) opMethodStr = L"Alt+" + opMethodStr;
 			}
-			list.SetItemText(index, 3, L"左键单击");
+			list.SetItemText(index, 3, opMethodStr);
 			list.SetItemText(index, 4, Title);
 			list.SetItemText(index, 5, Gap);
 
+			CString strTimes;
+			strTimes.Format(_T("%d"), point.times);
+			list.SetItemText(index, 6, strTimes);
 
-			pointInfo.push_back(point);
+			config.List.push_back(point);
 			index++;
 		}
 
-		isScript = TRUE;
-		
+		config.isScript = TRUE;
+		MessageBox(_T("读取成功"));
 	}
 }
 
 
-
 void CiClickDlg::SetTimes2()
 {
-	TimesDlg timesModal(NULL, pointInfo[select_row].times);
+	TimesDlg timesModal(NULL, config.List[select_row].times);
 	if (timesModal.DoModal() == IDOK) {
-		pointInfo[select_row].times = timesModal.times;
+		config.List[select_row].times = timesModal.times;
 		CString str;
 		str.Format(_T("%d"), timesModal.times);
 		list.SetItemText(select_row, 6, str);
@@ -1674,9 +1718,9 @@ void CiClickDlg::SetTimes2()
 
 void CiClickDlg::SetTimes1()
 {
-	TimesDlg timesModal(NULL, pointInfo[select_row].times);
+	TimesDlg timesModal(NULL, config.List[select_row].times);
 	if (timesModal.DoModal() == IDOK) {
-		pointInfo[select_row].times = timesModal.times;
+		config.List[select_row].times = timesModal.times;
 		CString str;
 		str.Format(_T("%d"), timesModal.times);
 		list.SetItemText(select_row, 6, str);
@@ -1695,53 +1739,61 @@ __int64 GetMillisecondTimestamp() {
 }
 
 // 捕获鼠标事件
-void ListAndVectorInstert(int x,int y,int mouse_key,int scrollDistance=0) {
+void ListAndVectorInstert(int x, int y, int mouse_key, int scrollDistance = 0) {
 	int iRow = g_pThis->list.GetItemCount(); //获取行数
 
+	CPoint pt(x, y);
+	HWND hWnd = ::WindowFromPoint(pt);
+	CString strTitle;
+	if (hWnd) {
+		::GetWindowText(hWnd, strTitle.GetBuffer(256), 256);
+		strTitle.ReleaseBuffer();
+		// 转换屏幕坐标到客户端坐标
+		::ScreenToClient(hWnd, &pt);
+	}
 
 	CString strX, strY;
-	strX.Format(_T("%d"), x);
-	strY.Format(_T("%d"), y);
+	strX.Format(_T("%d"), pt.x);
+	strY.Format(_T("%d"), pt.y);
 
 	CString eventTypeStr;
-
 
 	if (mouse_key == 1) {
 		eventTypeStr = L"左键单击";
 	}
-	else if(mouse_key == 2) {
+	else if (mouse_key == 2) {
 		eventTypeStr = L"左键双击";
 	}
-	else if(mouse_key == 3) {
+	else if (mouse_key == 3) {
 		eventTypeStr = L"滚轮上滚";
 	}
-	else if(mouse_key == 4) {
+	else if (mouse_key == 4) {
 		eventTypeStr = L"滚轮下滚";
 	}
-	else if(mouse_key == 5) {
+	else if (mouse_key == 5) {
 		eventTypeStr = L"滚轮单击";
 	}
-	else if(mouse_key == 6) {
+	else if (mouse_key == 6) {
 		eventTypeStr = L"右键单击";
 	}
-	else if(mouse_key ==7) {
+	else if (mouse_key == 7) {
 		eventTypeStr = L"右键双击";
 	}
-	else if(mouse_key == 8) {
+	else if (mouse_key == 8) {
 		eventTypeStr = L"鼠标移动";
 	}
-	else if(mouse_key == 9) {
+	else if (mouse_key == 9) {
 		eventTypeStr = L"左键按下";
 	}
-	else if(mouse_key == 10) {
+	else if (mouse_key == 10) {
 		eventTypeStr = L"左键松开";
 	}
-	
-	
+
+
 	PointInfo pI;
 	INT64 nowTime = GetMillisecondTimestamp();
 	if (timeTamp) {
-		pI.gap = nowTime - timeTamp;
+		pI.gap = (UINT)(nowTime - timeTamp);
 	}
 	else {
 		pI.gap = 0;
@@ -1751,7 +1803,7 @@ void ListAndVectorInstert(int x,int y,int mouse_key,int scrollDistance=0) {
 	g_pThis->list.SetItemText(iRow, 1, strY);
 	g_pThis->list.SetItemText(iRow, 2, L"鼠标");
 	g_pThis->list.SetItemText(iRow, 3, eventTypeStr);
-	g_pThis->list.SetItemText(iRow, 4, _T(""));
+	g_pThis->list.SetItemText(iRow, 4, strTitle);
 
 	CString timeStr;
 	timeStr.Format(_T("%d"), pI.gap);
@@ -1759,18 +1811,24 @@ void ListAndVectorInstert(int x,int y,int mouse_key,int scrollDistance=0) {
 	g_pThis->list.SetItemText(iRow, 6, _T("1"));
 
 
+	pI.x = pt.x;
+	pI.y = pt.y;
 	pI.screenX = x;
 	pI.screenY = y;
-	pI.hwnd = NULL;
+	pI.hwnd = hWnd;
+	if (hWnd) {
+		TCHAR szClassName[256] = { 0 };
+		::GetClassName(hWnd, szClassName, 256);
+		pI.className = szClassName;
+	}
 	pI.event_type = 1;
-	pI.title = L"";
+	pI.title = strTitle;
 	pI.times = 1;
 	pI.moust_key = mouse_key;
-	
+	pI.scrollDistance = scrollDistance;
+
 	timeTamp = nowTime;
-
-	pointInfo.push_back(pI);
-
+	g_pThis->config.List.push_back(pI);
 }
 
 LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
@@ -1916,12 +1974,22 @@ CString VirtualKeyCodeToCString(DWORD vkCode) {
 void ListAndVectorInstertKeyBd(int x, int y, DWORD keyCode, BOOL isDown) {
 	int iRow = g_pThis->list.GetItemCount(); //获取行数
 
+	CPoint pt(x, y);
+	HWND hWnd = ::WindowFromPoint(pt);
+	CString strTitle;
+	if (hWnd) {
+		::GetWindowText(hWnd, strTitle.GetBuffer(256), 256);
+		strTitle.ReleaseBuffer();
+		// 转换屏幕坐标到客户端坐标
+		::ScreenToClient(hWnd, &pt);
+	}
+
 	CString strX, strY;
-	strX.Format(_T("%d"), x);
-	strY.Format(_T("%d"), y);
+	strX.Format(_T("%d"), pt.x);
+	strY.Format(_T("%d"), pt.y);
 
 
-	if (record_hotkey == keyCode) {
+	if (g_pThis->config.record_hotkey == keyCode) {
 		g_pThis = nullptr;
 		if (g_hMouseHook) UnhookWindowsHookEx(g_hMouseHook);
 		if (g_hKeyboardHook) UnhookWindowsHookEx(g_hKeyboardHook);
@@ -1933,7 +2001,7 @@ void ListAndVectorInstertKeyBd(int x, int y, DWORD keyCode, BOOL isDown) {
 	PointInfo pI;
 	INT64 nowTime = GetMillisecondTimestamp();
 	if (timeTamp) {
-		pI.gap = nowTime - timeTamp;
+		pI.gap = (UINT)(nowTime - timeTamp);
 	}
 	else {
 		pI.gap = 0;
@@ -1950,24 +2018,31 @@ void ListAndVectorInstertKeyBd(int x, int y, DWORD keyCode, BOOL isDown) {
 	g_pThis->list.InsertItem(iRow, strX);
 	g_pThis->list.SetItemText(iRow, 1, strY);
 	g_pThis->list.SetItemText(iRow, 2, L"键盘");
-	g_pThis->list.SetItemText(iRow, 3,  isDown ? downStr : upStr);
-	g_pThis->list.SetItemText(iRow, 4, _T(""));
+	g_pThis->list.SetItemText(iRow, 3, isDown ? downStr : upStr);
+	g_pThis->list.SetItemText(iRow, 4, strTitle);
 
 	CString timeStr;
 	timeStr.Format(_T("%d"), pI.gap);
 	g_pThis->list.SetItemText(iRow, 5, timeStr);
 	g_pThis->list.SetItemText(iRow, 6, _T("1"));
 
+	pI.x = pt.x;
+	pI.y = pt.y;
 	pI.screenX = x;
 	pI.screenY = y;
 	pI.keybd_key = isDown ? 2 : 3;
-	pI.hwnd = NULL;
+	pI.hwnd = hWnd;
+	if (hWnd) {
+		TCHAR szClassName[256] = { 0 };
+		::GetClassName(hWnd, szClassName, 256);
+		pI.className = szClassName;
+	}
 	pI.keyCode = keyCode;
 	pI.event_type = 2;
-	pI.title = L"";
+	pI.title = strTitle;
 	pI.times = 1;
 	timeTamp = nowTime;
-	pointInfo.push_back(pI);
+	g_pThis->config.List.push_back(pI);
 }
 
 // 键盘钩子处理函数（捕获按键）

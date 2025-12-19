@@ -1,4 +1,4 @@
-﻿// FrontDlg.cpp: 实现文件
+// FrontDlg.cpp: 实现文件
 //
 
 #include "pch.h"
@@ -6,6 +6,7 @@
 #include "afxdialogex.h"
 #include "FrontDlg.h"
 #include <imm.h>
+#pragma comment(lib, "imm32.lib")
 
 // FrontDlg 对话框
 

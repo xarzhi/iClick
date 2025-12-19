@@ -68,10 +68,20 @@ typedef struct Config {
 	UINT Random_Radius=0; // 模糊点击半径
 	UINT gap=20; // 总操作间隔
 	UINT loop=0; // 循环间隔
-	HotKeyInfo start_hotkey = {};		//	开始快捷键
+	INT Event_Type = 1;  // 1：鼠标事件   2：键盘事件
+	HotKeyInfo start_hotkey = { VK_F8, 0, L"F8" };		//	开始快捷键
 	HotKeyInfo mouse_hotkey = {};		//	鼠标事件快捷键
 	HotKeyInfo keyboard_hotkey = {};		//	键盘事件快捷键
 	vector<PointInfo> List;
+	
+	// 新增迁移变量
+	BOOL isClick = FALSE;
+	BOOL isScript = FALSE;
+	BOOL isRecording = FALSE;
+	BOOL start_watch = FALSE;
+	UINT watch_hotkey = VK_F6;
+	UINT keybd_hotkey = VK_F7;
+	UINT record_hotkey = VK_F10;
 }Config;
 
 
@@ -118,6 +128,7 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
+	Config config;
 	afx_msg void OnEnChangeEdit2();
 	afx_msg void OnBnClickedCheck2();
 	CListCtrl list;
@@ -126,20 +137,13 @@ public:
 //	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	CButton setOnTop_Check;
-	BOOL setOnTop=TRUE;
 	CEdit hwnd_ipt;
 	CHotKeyCtrl hotkey1;
 	afx_msg void OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2);
 	CEdit wnd_title_ipt;
 	CButton start_Watch_Check;
-	BOOL isClick=FALSE;
-	UINT gap = 20;
-	UINT loop = 0;
-	UINT Random_Radius = 0;
 	CButton start_btn;
 	CEdit gap_ipt;
-	UINT watch_hotkey = VK_F6;
-	UINT keybd_hotkey = VK_F7;
 	afx_msg void OnEnChangeEdit5();
 	CEdit loop_ipt;
 	CEdit blurry_ipt;
@@ -151,16 +155,12 @@ public:
 	CMenu m_Menu;
 	afx_msg void OnMenuRClick();
 	INT select_row=-1;
-	BOOL isRandomClick = FALSE;
 	afx_msg void OnDeleteAll();
 	afx_msg void OnBnClickedCheck1();
 	CButton random_check;
 	BOOL isDown = FALSE;
-	BOOL start_watch = FALSE;
-	INT Event_Type = 1;  // 1：鼠标事件   2：键盘事件
 	afx_msg void OnEnChangeEdit1();
 	CStatic pic_box;
-	BOOL need_hide = FALSE;
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
@@ -174,12 +174,10 @@ public:
 	afx_msg void DeleteAllRow();
 	afx_msg void OpenKeySelectDlg();
 	CEdit loop_edit;
-	UINT loop_times = 0;
 	afx_msg void OpenGapModal();
 	afx_msg void OpenGapDialog1();
 	int main_tab_index=0;
 	BOOL m_bTracking = FALSE;
-	BOOL isFrontOpt = FALSE;
 	CButton isfront_check;
 	afx_msg void OnBnClickedCheck5();
 	afx_msg void OnEnChangeEdit6();
@@ -201,19 +199,18 @@ public:
 	afx_msg void ChangeToRightDbClick();
 	afx_msg void OnBnClickedButton3();
 	afx_msg void OnBnClickedButton2();
-	void SaveInitConfig(CString Section, CString Key, CString Value);
-	void SaveHotKey(CHotKeyCtrl& hotkey, CString Section);
+	void SaveInitConfig(CString Section, CString Key, CString Value, CString filePath);
+	void SaveHotKey(CHotKeyCtrl& hotkey, CString Section, CString filePath);
+	void ReadHotKey(CHotKeyCtrl& hotkey, CString Section, CString filePath);
 	CString ReadSection(CString path, CString Section, CString Key);
 	vector<CString> GetPointSections(CString iniPath);
 	afx_msg void SetTimes2();
 	afx_msg void SetTimes1();
 	CButton read_btn;
 	CButton save_btn;
-	BOOL isRecording = FALSE;
 	HHOOK g_hMouseHook = NULL;
 	HHOOK g_hKeyboardHook = NULL;
 	CHotKeyCtrl record_ipt;
 	CStatic record_text;
-	BOOL isScript = FALSE;
 };
 

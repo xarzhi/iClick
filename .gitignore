@@ -1,3 +1,7 @@
 x64
 iClick
 .vs
+Debug
+build
+.vscode
+Release/iClick.exe

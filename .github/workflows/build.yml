@@ -1,0 +1,38 @@
+name: Build MFC Project
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置 MSBuild 环境
+      uses: microsoft/setup-msbuild@v2
+
+    - name: 还原 NuGet 包
+      # 如果你的项目没有使用 NuGet，这一步会自动跳过或报错，可以根据需要保留
+      run: nuget restore iClick.sln
+
+    - name: 编译项目
+      shell: cmd
+      env:
+        LINK: "imm32.lib"
+      run: |
+        msbuild iClick.sln ^
+        /p:Configuration=Release ^
+        /p:Platform=x86 ^
+        /p:PlatformToolset=v143 ^
+        /p:CL_MPCount=4 ^
+        /p:ForceImportBeforeCppTargets="$(MSBuildThisFileDirectory)GlobalConfig.props"
+        
+    - name: 上传打包产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: iClick-Release-Binary
+        # 注意：如果你的项目是多层级目录，路径可能是 iClick/Release/*.exe
+        path: "**/Release/*.exe"
