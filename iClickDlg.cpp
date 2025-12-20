@@ -637,13 +637,8 @@ UINT BackThreadOption(LPVOID pParam)
 					switch (point.moust_key) {
 					case 1:			// 单击
 					{
-					/*	pTempWnd->SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
-						pTempWnd->SendMessage(WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));*/
-						SetCursorPos(x, y);
-
-						// 2. 模拟一次完整的左键单击（按下和弹起）
-						mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-						mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+						pTempWnd->SendMessage(WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(x, y));
+						pTempWnd->SendMessage(WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(x, y));
 						break;
 					}
 					case 2:			// 双击
